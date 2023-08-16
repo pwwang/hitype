@@ -146,7 +146,7 @@ gs_prepare <- function(path_to_db_file, tissue_type = NULL) {
         split(cell_markers, cell_markers$level),
         function(x) {
             lapply(
-                split(x, x$cellName),
+                split(x, revert_cell_name(x$cellName)),
                 function(y) {
                     markers <- trimws(unlist(strsplit(y$geneSymbolmore1, ",")))
                     genes <- gsub("\\++", "", markers)

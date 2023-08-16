@@ -230,3 +230,42 @@ test_that("hitype_assign() works with hierachical scores", {
         c("CD4 Naive Resting", "CD4 Naive Activated", "Treg Naive Activated")
     )
 })
+
+test_that("hitype_assign() on real data", {
+    # Load gene sets
+    gs <- gs_prepare(hitypedb_tcell)
+    # Load expression data
+    rdsfile <- file.path("/tmp", "pbmc3kt.rds")
+    if (!file.exists(rdsfile)) {
+        download.file(
+            "https://www.dropbox.com/scl/fi/pyizrlwuklt6g9yrgf51p/pbmc3kt.rds?rlkey=fz6t9qqjjf5n8dr08vv6rhyye&dl=1",
+            rdsfile
+        )
+    }
+    pbmc3kt <- readRDS(rdsfile)
+
+    # Calculate cell type scores
+    scores <- suppressWarnings(  # Ignore non-exist genes
+        hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
+    )
+    cell_types <- hitype_assign(pbmc3kt$seurat_clusters, scores, gs)
+    # Cluster                      CellType
+    # 0       0            CD4 Th17 Activated
+    # 1       1           CD8 Naïve Activated
+    # 2       2            CD4 Tscm Inhibited
+    # 3       3       CD8 Tumor Recirculating
+    # 4       4                CD4 Treg Naïve
+    # 5       5  CD8 Tte Terminally Exhausted
+    # 6       6                      MAIT Tem
+    # 7       7 CD4 Naïve Precursor Exhausted
+    # 8       8      MAIT Tumor Recirculating
+    expect_equal(
+        cell_types$CellType,
+        c(
+            "CD4 Th17 Activated", "CD8 Naïve Activated", "CD4 Tscm Inhibited",
+            "CD8 Tumor Recirculating", "CD4 Treg Naïve",
+            "CD8 Tte Terminally Exhausted", "MAIT Tem",
+            "CD4 Naïve Precursor Exhausted", "MAIT Tumor Recirculating"
+        )
+    )
+})
