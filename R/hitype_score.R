@@ -1,3 +1,47 @@
+#' Faster version of do.call
+do_call <- function (what, args, quote = FALSE, envir = parent.frame())  {
+  # source: Gmisc
+  # author: Max Gordon <max@gforge.se>
+  if (quote)
+    args <- lapply(args, enquote)
+
+  if (is.null(names(args)) ||
+      is.data.frame(args)){
+    argn <- args
+    args <- list()
+  }else{
+    # Add all the named arguments
+    argn <- lapply(names(args)[names(args) != ""], as.name)
+    names(argn) <- names(args)[names(args) != ""]
+    # Add the unnamed arguments
+    argn <- c(argn, args[names(args) == ""])
+    args <- args[names(args) != ""]
+  }
+
+  if (inherits(x = what, what = "character")){
+    if(is.character(what)){
+      fn <- strsplit(what, "[:]{2,3}")[[1]]
+      what <- if(length(fn)==1) {
+        get(fn[[1]], envir=envir, mode="function")
+      } else {
+        get(fn[[2]], envir=asNamespace(fn[[1]]), mode="function")
+      }
+    }
+    call <- as.call(c(list(what), argn))
+  }else if (inherits(x = what, "function")){
+    f_name <- deparse(substitute(what))
+    call <- as.call(c(list(as.name(f_name)), argn))
+    args[[f_name]] <- what
+  }else if (inherits(x = what, what="name")){
+    call <- as.call(c(list(what, argn)))
+  }
+
+  eval(call,
+       envir = args,
+       enclos = envir)
+
+}
+
 #' Calculate ScType scores and assign cell types
 #'
 #' GNU General Public License v3.0
@@ -221,7 +265,7 @@ hitype_assign_level <- function(
     threshold,
     top = 10
 ) {
-    x <- do.call(
+    x <- do_call(
         "rbind",
         lapply(unique(clusters), function(cl) {
             es_max_cl <- sort(
@@ -356,7 +400,7 @@ hitype_assign <- function(
     }
 
     # Cluster, CellType, Scores, NCells, Level
-    cl_results <- do.call(
+    cl_results <- do_call(
         rbind,
         lapply(seq_along(hitype_scores), function(i) {
             cl_ret <- hitype_assign_level(
@@ -378,7 +422,7 @@ hitype_assign <- function(
             # Make sure first level listed in order
             # 1 1 2 2 instead of 1 2 1 2
             cell_types <- rev(cell_types)
-            all_types <- do.call(expand.grid, cell_types)
+            all_types <- do_call(expand.grid, cell_types)
             all_types <- all_types[, rev(colnames(all_types)), drop = FALSE]
             if (nrow(all_types) == 0) {
                 return(fallback)

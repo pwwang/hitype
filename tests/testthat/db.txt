@@ -1,12 +1,12 @@
 cellName	nextLevels	geneSymbolmore1	geneSymbolmore2	level
-CD4	!High Cytokine Memory	CD4++		1
-CD8	!Th1,Th2,Th9,Th17	CD8A++,CD8B++		1
-CD4 Treg	!Th1,Th2,Th9,Th17,High Cytokine Memory;!	FOXP3++		1
-Double Positive	!Th1,Th2,Th9,Th17,High Cytokine Memory;!	CD4++,CD8A++,CD8B++		1
+CD4	!High Cytokine Memory	CD4+++		1
+CD8	!Th1,Th2,Th9,Th17	CD8A+++,CD8B+++		1
+CD4 Treg	!Th1,Th2,Th9,Th17,High Cytokine Memory;!	FOXP3+++		1
+Double Positive	!Th1,Th2,Th9,Th17,High Cytokine Memory;!	CD4+++,CD8A+++,CD8B+++		1
 Double Negative	!Th1,Th2,Th9,Th17,High Cytokine Memory;!		CD4,CD8A,CD8B,TRDV2,TRGV9,TRGC1,TRDC,FCGR3A,ITGAL,TRGC2,ZEB2	1
-γδ-T	!Th1,Th2,Th9,Th17,High Cytokine Memory;!	CD8A,CD8B,TRDV2+,TRGV9+,TRGC1+,TRDC+,FCGR3A+,ITGAL+,TRGC2+,ZEB2+		1
+γδ-T	!Th1,Th2,Th9,Th17,High Cytokine Memory;!	TRDV2,TRGV9,TRGC1,TRDC,FCGR3A,ITGAL,TRGC2,ZEB2		1
 MAIT	!Th1,Th2,Th9,Th17,High Cytokine Memory;!	SLC4A10++		1
-Naïve		BCL2++,CCR7++,CD27++,EOMES+,SELL++,IL7R++,LRRN3++,NELL2++,TCF7++	B3GAT1,FAS,CD44,CD69,GZM.,HLA.DRA,IL2RA,KLRG1,PTPRC	2
+Naïve		BCL2++,CCR7++,CD27++,EOMES+,SELL++,IL7R++,LRRN3++,NELL2++,TCF7++	B3GAT1,FAS,CD44,CD69,GZMB,GZMH,GZMA,GZMK,GZMM,HLA.DRA,IL2RA,KLRG1,PTPRC	2
 Tscm		BCL2++,CCR7++,CD27++,FAS++,SELL++,IL7R++,CD58++,CXCR3++,IL2RB++,ITGAL++,LEF1++,ZEB1++	B3GAT1	2
 Tpm		CD27++,GZMB++,GZMH++,GZMA++,GZMK++,GZMM++,CX3CR1,MKI67++,SELL++		2
 Tem		CD27+,GZMB++,GZMH++,GZMA++,GZMK++,GZMM++,CCR7+,CX3CR1++,FAS++,NKG7++,TBX21++,SELL+,ITGAL++,HNRNPLL++,KLRB1++,IL7R++		2

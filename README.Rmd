@@ -42,7 +42,7 @@ devtools::install_github("pwwang/hitype")
 
 ## Quick start
 
-```{r}
+```{r, warning=FALSE}
 library(hitype)
 
 # Load gene sets
@@ -54,11 +54,95 @@ pbmc3kt <- readRDS(url(
 ))
 
 # Calculate cell type scores
-scores <- suppressWarnings(  # Ignore non-exist genes
-  hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
-)
+scores <- hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
 
 # Assign cell types
 cell_types <- hitype_assign(pbmc3kt$seurat_clusters, scores, gs)
-print(cell_types)
+cell_types
+```
+
+## Usage
+
+### `hitype` is compatible with `ScType`
+
+Loading packages:
+
+```{r warning=FALSE, message=FALSE}
+lapply(
+  c("dplyr","Seurat","HGNChelper","openxlsx"),
+  library,
+  character.only = T
+)
+
+# load sc-type
+source("https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/R/gene_sets_prepare.R")
+source("https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/R/sctype_score_.R")
+```
+
+```{r, warning=FALSE}
+# scores by ScType
+
+# get cell-type-specific gene sets from our in-built database (DB)
+gs_list = gene_sets_prepare(
+  "https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/ScTypeDB_short.xlsx",
+  "Immune system"
+)
+
+# calculate cell type scores
+scRNAseqData = readRDS(gzcon(url(
+  'https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/exampleData.RDS'
+)))
+es.max = sctype_score(
+  scRNAseqData = scRNAseqData,
+  scaled = TRUE,
+  gs = gs_list$gs_positive,
+  gs2 = gs_list$gs_negative
+)
+es.max[1:5, 1:3]
+```
+
+```{r, warning=FALSE}
+# scores by hitype
+library(hitype)
+
+# load gene sets
+gs = gs_prepare(
+  "https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/ScTypeDB_short.xlsx",
+  "Immune system"
+)
+
+# calculate cell type scores
+es.scores = suppressWarnings(hitype_score(scRNAseqData, gs, scaled = TRUE))
+es.scores[[1]][rownames(es.max)[1:5], colnames(es.max)[1:3]]
+```
+
+You can see that the results are the same.
+
+### `hitype` is faster for large datasets
+
+```{r, warning=FALSE}
+# speed comparison
+library(ggplot2)
+library(tidyr)
+library(microbenchmark)
+
+exprs <- scRNAseqData[, rep(colnames(scRNAseqData), 10)]
+
+bm <- microbenchmark(
+  ScType = sctype_score(
+    scRNAseqData = exprs,
+    scaled = TRUE,
+    gs = gs_list$gs_positive,
+    gs2 = gs_list$gs_negative
+  ),
+  hitype = hitype_score(exprs, gs, scaled = TRUE),
+  times = 10,
+  unit = "ms"
+)%>%
+  summary() %>%
+  pivot_longer(cols = -c("expr", "neval"), names_to = "measure", values_to = "time")
+
+ggplot(bm, aes(x = measure, y = time, fill = expr)) +
+  geom_col(position = "dodge") +
+  labs(x = NULL, y = "Time (ms)")
 ```

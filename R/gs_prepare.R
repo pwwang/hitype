@@ -157,12 +157,12 @@ gs_prepare <- function(path_to_db_file, tissue_type = NULL) {
                     mean_pos_weights <- suppressWarnings(
                         mean(weights[weights > 0], na.rm = TRUE)
                     )
-                    if (is.na(mean_pos_weights)) { mean_pos_weights <- .5 }
+                    if (is.na(mean_pos_weights)) { mean_pos_weights <- .25 }
                     weights <- c(
                         weights,
                         rep(-mean_pos_weights, length(markers2))
                     )
-                    list(markers = genes, weights = weights)
+                    list(markers = genes, weights = unname(weights))
                 }
             )
         }
