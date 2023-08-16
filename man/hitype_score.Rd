@@ -10,7 +10,8 @@ hitype_score(exprs, gs, scaled = FALSE)
 \item{exprs}{Input scRNA-seq data matrix
 (rownames - gene names, colnames - cell names)}
 
-\item{gs}{The gene sets prepared by \code{\link{gs_prepare}}}
+\item{gs}{The gene sets prepared by \code{\link{gs_prepare}}
+The \code{gene_sets} is used. One could also pass \code{gs$gene_sets} directly.}
 
 \item{scaled}{Whether the input data is scaled or not}
 }

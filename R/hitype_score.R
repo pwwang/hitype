@@ -5,6 +5,8 @@
 #' @author
 #' Matt Mulvahill, Panwen Wang
 #'
+#' @importFrom dplyr %>%
+#'
 #' @param exprs Input scRNA-seq data matrix
 #'  (rownames - gene names, colnames - cell names)
 #' @param gs The gene sets prepared by \code{\link{gs_prepare}}

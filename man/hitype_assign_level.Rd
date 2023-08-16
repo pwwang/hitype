@@ -4,12 +4,7 @@
 \alias{hitype_assign_level}
 \title{Assign cell types based on ScType scores}
 \usage{
-hitype_assign_level(
-  clusters,
-  hitype_scores,
-  fallback = "Unknown",
-  threshold = 0.25
-)
+hitype_assign_level(clusters, hitype_scores, threshold, top = 10)
 }
 \arguments{
 \item{clusters}{A named vector of original cluster assignments
@@ -17,15 +12,15 @@ hitype_assign_level(
 
 \item{hitype_scores}{A list of matrices of cell type scores for each level}
 
-\item{fallback}{A fallback cell type if no cell type is assigned}
-
 \item{threshold}{A threshold for low confidence cell type assignment
 The cell types are only assigned for cells with scores higher than the
 threshold * ncells.
 (0 - 1, default 0.25)}
+
+\item{top}{The number of top cell types to assign for each cluster}
 }
 \value{
-A list of mappings from original cluster assignments to cell types
+A data from of top cell type assignments
 }
 \description{
 Assign cell types based on ScType scores

@@ -4,13 +4,23 @@
 \alias{hitype_assign}
 \title{Assign cell types based on ScType scores}
 \usage{
-hitype_assign(clusters, hitype_scores, fallback = "Unknown", threshold = 0.25)
+hitype_assign(
+  clusters,
+  hitype_scores,
+  gs = NULL,
+  fallback = "Unknown",
+  threshold = 0.25
+)
 }
 \arguments{
 \item{clusters}{A named vector of original cluster assignments
 (names - cell names, values - cluster assignments)}
 
 \item{hitype_scores}{A list of matrices of cell type scores for each level}
+
+\item{gs}{The gene sets prepared by \code{\link{gs_prepare}}
+The \code{cell_names} is actually used. One could also pass \code{gs$cell_names}
+directly.}
 
 \item{fallback}{A fallback cell type if no cell type is assigned}
 

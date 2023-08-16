@@ -42,25 +42,21 @@ devtools::install_github("pwwang/hitype")
 
 ## Quick start
 
-This is a basic example which shows you how to solve a common problem:
-
-```{r example}
+```{r}
 library(hitype)
-## basic example code
+
+# Load gene sets
+gs <- gs_prepare(hitypedb_tcell)
+
+# Load expression data
+pbmc3kt <- readRDS(url(
+  "https://www.dropbox.com/scl/fi/pyizrlwuklt6g9yrgf51p/pbmc3kt.rds?rlkey=fz6t9qqjjf5n8dr08vv6rhyye&dl=1"
+))
+
+# Calculate cell type scores
+scores <- hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
+
+# Assign cell types
+cell_types <- hitype_assign(pbmc3kt$seurat_clusters, scores, gs)
+print(cell_types)
 ```
-
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
-
-```{r cars}
-summary(cars)
-```
-
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this.
-
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
