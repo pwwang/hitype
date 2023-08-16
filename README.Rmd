@@ -54,7 +54,9 @@ pbmc3kt <- readRDS(url(
 ))
 
 # Calculate cell type scores
-scores <- hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
+scores <- suppressWarnings(  # Ignore non-exist genes
+  hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
+)
 
 # Assign cell types
 cell_types <- hitype_assign(pbmc3kt$seurat_clusters, scores, gs)

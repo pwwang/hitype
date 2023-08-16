@@ -10,6 +10,14 @@
 single-cell RNA-seq data based on
 [ScType](https://github.com/IanevskiAleksandr/sc-type).
 
+## Features
+
+-   [x] Compatibility with
+    [ScType](https://github.com/IanevskiAleksandr/sc-type)
+-   [x] Hierarchical and high-resolution cell-type identification
+-   [x] Speed optimization
+-   [x] Support as an R package with unit tests
+
 ## Installation
 
 You can install the development version of hitype like so:
@@ -23,33 +31,33 @@ devtools::install_github("pwwang/hitype")
 
 ## Quick start
 
-This is a basic example which shows you how to solve a common problem:
-
 ``` r
 library(hitype)
-## basic example code
+
+# Load gene sets
+gs <- gs_prepare(hitypedb_tcell)
+
+# Load expression data
+pbmc3kt <- readRDS(url(
+  "https://www.dropbox.com/scl/fi/pyizrlwuklt6g9yrgf51p/pbmc3kt.rds?rlkey=fz6t9qqjjf5n8dr08vv6rhyye&dl=1"
+))
+
+# Calculate cell type scores
+scores <- suppressWarnings(  # Ignore non-exist genes
+  hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
+)
+
+# Assign cell types
+cell_types <- hitype_assign(pbmc3kt$seurat_clusters, scores, gs)
+print(cell_types)
+#>   Cluster CellType
+#> 0       0  Unknown
+#> 1       1  Unknown
+#> 2       2  Unknown
+#> 3       3  Unknown
+#> 4       4  Unknown
+#> 5       5  Unknown
+#> 6       6  Unknown
+#> 7       7  Unknown
+#> 8       8  Unknown
 ```
-
-What is special about using `README.Rmd` instead of just `README.md`?
-You can include R chunks like so:
-
-``` r
-summary(cars)
-#>      speed           dist       
-#>  Min.   : 4.0   Min.   :  2.00  
-#>  1st Qu.:12.0   1st Qu.: 26.00  
-#>  Median :15.0   Median : 36.00  
-#>  Mean   :15.4   Mean   : 42.98  
-#>  3rd Qu.:19.0   3rd Qu.: 56.00  
-#>  Max.   :25.0   Max.   :120.00
-```
-
-You’ll still need to render `README.Rmd` regularly, to keep `README.md`
-up-to-date. `devtools::build_readme()` is handy for this.
-
-You can also embed plots, for example:
-
-<img src="man/figures/README-pressure-1.png" width="100%" />
-
-In that case, don’t forget to commit and push the resulting figure
-files, so they display on GitHub and CRAN.
