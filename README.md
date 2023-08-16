@@ -50,14 +50,14 @@ scores <- suppressWarnings(  # Ignore non-exist genes
 # Assign cell types
 cell_types <- hitype_assign(pbmc3kt$seurat_clusters, scores, gs)
 print(cell_types)
-#>   Cluster CellType
-#> 0       0  Unknown
-#> 1       1  Unknown
-#> 2       2  Unknown
-#> 3       3  Unknown
-#> 4       4  Unknown
-#> 5       5  Unknown
-#> 6       6  Unknown
-#> 7       7  Unknown
-#> 8       8  Unknown
+#>   Cluster                      CellType
+#> 0       0            CD4 Th17 Activated
+#> 1       1           CD8 Naïve Activated
+#> 2       2            CD4 Tscm Inhibited
+#> 3       3       CD8 Tumor Recirculating
+#> 4       4                CD4 Treg Naïve
+#> 5       5  CD8 Tte Terminally Exhausted
+#> 6       6                      MAIT Tem
+#> 7       7 CD4 Naïve Precursor Exhausted
+#> 8       8      MAIT Tumor Recirculating
 ```
