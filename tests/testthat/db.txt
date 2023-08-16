@@ -21,13 +21,13 @@ CTL		GZMH++,NKG7++,CX3CR1++		2
 Th9		IL9++		2
 High Cytokine Memory		CCL3++,CCL4++		2
 Tumor Recirculating	!Tumor Recirculating	ITGAE++,ENTPD1++		2
-Th2		CCR3++,CCR4++,CCR8++,CXCR4++,GATA3++,IL13++,IL4++,IL5++,KRT1++,PTGDR2++,STAT5++,STAT6++		2
+Th2		CCR3++,CCR4++,CCR8++,CXCR4++,GATA3++,IL13++,IL4++,IL5++,KRT1++,PTGDR2++,STAT5++,STAT5A++,STAT6++		2
 Th17		STAT3++,KLRB1++,CCR6++,CD40LG++,IL17A++,IL17F++,IL21R++,IL23R++,IL6R++,RORA++,RORC++,TGFB1++,TNFRSF4++		2
 Th1		STAT6++,GZMK++,TBX21++,GZMA++,CXCR3++,CCL5++,CCR1++,CCR5++,IFNG++,IFNGR1++,IFNGR2++,IL12RB2++,IL18R1++,IL27++,LYAR++,STAT1++,STAT4++,TNF++		2
 Inhibited		PDCD1++,HAVCR2++,LAG3++,TIGIT++	B3GAT1,TOX	3
 Precursor Exhausted		PDCD1++,TOX++,TCF7++	B3GAT1	3
 Terminally Exhausted		PDCD1++,LAG3++,TIGIT++,TOX++	B3GAT1,TCF7	3
-Senescent		PDCD1++,B3GAT1++,KLRG1++,CD27,CD28.1		3
-Activated		TNFRSF9++,ENTPD1++,CD28.1++,CD69++		3
-Proliferating		MIK67++		3
+Senescent		PDCD1++,B3GAT1++,KLRG1++,CD27,CD28		3
+Activated		TNFRSF9++,ENTPD1++,CD28++,CD69++		3
+Proliferating		MKI67++		3
 Tumor Recirculating		ENTPD1++,ITGAE++		3
