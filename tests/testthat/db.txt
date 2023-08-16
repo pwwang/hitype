@@ -1,0 +1,33 @@
+cellName	nextLevels	geneSymbolmore1	geneSymbolmore2	level
+CD4	!High Cytokine Memory			1
+CD8	!Th1,Th2,Th9,Th17			1
+CD4 Treg	!Th1,Th2,Th9,Th17,High Cytokine Memory;!			1
+Double Positive	!Th1,Th2,Th9,Th17,High Cytokine Memory;!			1
+Double Negative	!Th1,Th2,Th9,Th17,High Cytokine Memory;!			1
+γδ-T	!Th1,Th2,Th9,Th17,High Cytokine Memory;!			1
+MAIT	!Th1,Th2,Th9,Th17,High Cytokine Memory;!			1
+Naïve				2
+Tscm				2
+Tpm				2
+Tem				2
+Temra				2
+Tte				2
+Tcm				2
+Trm				2
+MPEC				2
+SLEC				2
+Ttm				2
+CTL				2
+Th9				2
+High Cytokine Memory				2
+Tumor Recirculating	!Tumor Recirculating			2
+Th2				2
+Th17				2
+Th1				2
+Inhibited				3
+Precursor Exhausted				3
+Terminally Exhausted				3
+Senescent				3
+Activated				3
+Proliferating				3
+Tumor Recirculating				3

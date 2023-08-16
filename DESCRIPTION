@@ -1,0 +1,22 @@
+Package: hitype
+Title: Hierarchical and high-resolution cell-type identification for single-cell RNA-seq data based on ScType.
+Version: 0.0.0
+Authors@R:
+    person("Panwen", "Wang", , "pwwang@pwwang.com", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: Hierarchical and high-resolution cell-type identification for single-cell RNA-seq data based on ScType.
+License: GNU General Public License v3.0
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Imports:
+    dplyr
+Depends: 
+    R (>= 2.10)
+LazyData: true
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+VignetteBuilder: knitr
