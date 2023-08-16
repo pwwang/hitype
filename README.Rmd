@@ -20,6 +20,13 @@ knitr::opts_chunk$set(
 
 **Hi**erarchical and **hi**gh-resolution cell-type identification for single-cell RNA-seq data based on [ScType][1].
 
+## Features
+
+- [x] Compatibility with [ScType][1]
+- [x] Hierarchical and high-resolution cell-type identification
+- [x] Speed optimization
+- [x] Support as an R package with unit tests
+
 [1]: https://github.com/IanevskiAleksandr/sc-type
 
 ## Installation
