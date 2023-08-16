@@ -32,9 +32,9 @@ jobs:
           r-version: ${{ matrix.r-version }}
       - name: Install dependencies
         run: |
-          install.packages(c("remotes", "devtools", "dplyr"))
+          install.packages(c("remotes", "devtools", "dplyr", "openxlsx", "scales", "HGNChelper"))
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
       - name: Check
-        run: devtools::test()
+        run: devtools::test(reporter = c("fail", "tap"))
         shell: Rscript {0}
