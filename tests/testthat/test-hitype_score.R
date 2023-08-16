@@ -250,11 +250,11 @@ test_that("hitype_assign() on real data", {
     )
     cell_types <- hitype_assign(pbmc3kt$seurat_clusters, scores, gs)
     # Cluster                      CellType
-    # 0       0            CD4 Th17 Activated
+    # 0       0                      CD4 Th17
     # 1       1           CD8 Naïve Activated
     # 2       2            CD4 Tscm Inhibited
-    # 3       3       CD8 Tumor Recirculating
-    # 4       4                CD4 Treg Naïve
+    # 3       3                     CD8 Naïve
+    # 4       4         Double Negative Naïve
     # 5       5  CD8 Tte Terminally Exhausted
     # 6       6                      MAIT Tem
     # 7       7 CD4 Naïve Precursor Exhausted
@@ -262,8 +262,8 @@ test_that("hitype_assign() on real data", {
     expect_equal(
         cell_types$CellType,
         c(
-            "CD4 Th17 Activated", "CD8 Naïve Activated", "CD4 Tscm Inhibited",
-            "CD8 Tumor Recirculating", "CD4 Treg Naïve",
+            "CD4 Th17", "CD8 Naïve Activated", "CD4 Tscm Inhibited",
+            "CD8 Naïve", "Double Negative Naïve",
             "CD8 Tte Terminally Exhausted", "MAIT Tem",
             "CD4 Naïve Precursor Exhausted", "MAIT Tumor Recirculating"
         )

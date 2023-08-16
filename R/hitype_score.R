@@ -300,7 +300,7 @@ hitype_assign <- function(
     hitype_scores,
     gs = NULL,
     fallback = "Unknown",
-    threshold = 0.0
+    threshold = 0.05
 ) {
     uclusters <- unique(clusters)
     if (is.data.frame(hitype_scores) || is.matrix(hitype_scores)) {
