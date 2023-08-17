@@ -163,11 +163,6 @@ test_that("hitype_assign() works with single data.frame", {
     colnames(hitype_scores) <- cells
     x <- hitype_assign(clusters, hitype_scores)
     x <- summary(x)
-    #   Level Cluster CellType Score
-    #   <dbl>   <dbl> <chr>    <dbl>
-    # 1     1       1 CD4      0.332
-    # 2     1       2 CD4      0.621
-    # 3     1       3 CD4      0.547
     expect_equal(x$Cluster, c(1, 2, 3))
     expect_equal(x$CellType, c("CD4", "CD4", "CD4"))
     expect_equal(x$Score, c(0.332, 0.621, 0.547), tolerance = 1e-3)
@@ -226,15 +221,27 @@ test_that("hitype_assign() works with hierachical scores", {
         ),
         threshold = 0
     )
-    x <- summary(x)
+    y <- summary(x)
     #   Cluster CellType             Score
     # *   <dbl> <chr>                <dbl>
     # 1       1 CD4 Naive Resting    0.652
     # 2       2 CD4 Naive Activated  0.679
     # 3       3 Treg Naive Activated 0.782
-    expect_equal(x$Cluster, c(1, 2, 3))
+    expect_equal(y$Cluster, c(1, 2, 3))
     expect_equal(
-        x$CellType,
+        y$CellType,
+        c("CD4 Naive Resting", "CD4 Naive Activated", "Treg Naive Activated")
+    )
+
+    z <- summary(x, level_weights = 1)
+    #   Cluster CellType             Score
+    #     <dbl> <chr>                <dbl>
+    # 1       1 CD4 Naive Resting    0.604
+    # 2       2 CD4 Naive Activated  0.674
+    # 3       3 Treg Naive Activated 0.748
+    expect_equal(z$Cluster, c(1, 2, 3))
+    expect_equal(
+        z$CellType,
         c("CD4 Naive Resting", "CD4 Naive Activated", "Treg Naive Activated")
     )
 })
@@ -279,7 +286,7 @@ test_that("hitype_assign() works with hierachical scores", {
 # })
 
 # test_that("hitype_assign() on our data", {
-#     sobjfile = ".pipen/ImmunopipeMM/SeuratClusteringOfTCells/0/output/samples.seurat.RDS"
+#     sobjfile = "/home/mayo/m161047/workspace/s215605.Lin_Yi.sctcr-scrna/MM/.pipen/ImmunopipeMM/SeuratClusteringOfTCells/0/output/samples.seurat.RDS"
 #     sobj = readRDS(sobjfile)
 
 #     gs = gs_prepare(hitypedb_tcell)

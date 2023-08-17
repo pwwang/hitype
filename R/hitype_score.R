@@ -279,7 +279,7 @@ hitype_assign <- function(
     gs = NULL,
     fallback = "Unknown",
     threshold = 0.05,
-    top = 1
+    top = 10
 ) {
     if (is.data.frame(scores) || is.matrix(scores)) {
         # to be compatible with sctype
@@ -323,5 +323,6 @@ hitype_assign <- function(
     rownames(out) <- NULL
     class(out) <- c("hitype_result", class(out))
     attr(out, "gs") <- gs
+    attr(out, "fallback") <- fallback
     return(out)
 }

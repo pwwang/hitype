@@ -7,21 +7,32 @@
 #'  the final cell type score
 #'  It should be either a numeric vector of length equal to the number of levels
 #'  or a single numeric value to be used for all levels
-#' @param ... Additional arguments to pass to \code{\link{print}}
+#'  It can also be a function that takes the levels as input and returns a
+#'  numeric vectors as the weights.
 #'
 #' @return The summary of the hitype_result object
 #'
 #' @export
-summary.hitype_result <- function(hitype_res, top = 1, level_weights = 1) {
+summary.hitype_result <- function(
+    hitype_res,
+    top = 1,
+    level_weights = function(l) 1 / (10 ^ (l - 1))
+) {
     ulevels <- unique(hitype_res$Level)
     if (length(ulevels) == 1) {
         hitype_res %>%
             dplyr::group_by(Cluster) %>%
-            dplyr::slice_max(Score, n = top) %>%
+            dplyr::slice_max(Score, n = top, with_ties = FALSE) %>%
             dplyr::ungroup()
     } else {
+        if (is.function(level_weights)) {
+            level_weights <- level_weights(ulevels)
+        }
         if (length(level_weights) == 1) {
-            level_weights <- rep(level_weights, length(ulevels))
+            level_weights <- rep(
+                level_weights / length(ulevels),
+                length(ulevels)
+            )
         }
 
         # Work on each Cluster
@@ -41,7 +52,7 @@ summary.hitype_result <- function(hitype_res, top = 1, level_weights = 1) {
                     # nocov start
                     return(data.frame(
                         Cluster = cl_ret$Cluster[1],
-                        CellType = fallback,
+                        CellType = attr(hitype_res, "fallback"),
                         Score = NA
                     ))
                     # nocov end
@@ -55,7 +66,7 @@ summary.hitype_result <- function(hitype_res, top = 1, level_weights = 1) {
                         match(all_types[, i], scores$CellType),
                         "Score"
                     ]
-                    all_scores <- all_scores + scores / (10^(i - 1))
+                    all_scores <- all_scores + scores * level_weights[i]
                 }
                 all_types$Score <- all_scores
                 all_types$Cluster <- cl_ret$Cluster[1]
@@ -71,13 +82,13 @@ summary.hitype_result <- function(hitype_res, top = 1, level_weights = 1) {
                     dplyr::ungroup() %>%
                     dplyr::filter(!is.na(CellType)) %>%
                     dplyr::select(Cluster, CellType, Score) %>%
-                    dplyr::slice_max(Score, n = top)
+                    dplyr::slice_max(Score, n = top, with_ties = FALSE)
 
                 if (nrow(all_types) == 0) {
                     # nocov start
                     return(data.frame(
                         Cluster = cl_ret$Cluster[1],
-                        CellType = fallback,
+                        CellType = attr(hitype_res, "fallback"),
                         Score = NA
                     ))
                     # nocov end
@@ -98,12 +109,19 @@ summary.hitype_result <- function(hitype_res, top = 1, level_weights = 1) {
 #'  the final cell type score
 #'  It should be either a numeric vector of length equal to the number of levels
 #'  or a single numeric value to be used for all levels
+#'  It can also be a function that takes the levels as input and returns a
+#'  numeric vectors as the weights.
 #' @param ... Additional arguments to pass to \code{\link{print}}
 #'
 #' @return The summary of the hitype_result object
 #'
 #' @export
-print.hitype_result <- function(hitype_res, top = 1, level_weights = 1, ...) {
+print.hitype_result <- function(
+    hitype_res,
+    top = 1,
+    level_weights = function(l) 1 / (10 ^ (l - 1)),
+    ...
+) {
     # nocov start
     x <- summary(hitype_res, top = top, level_weights = level_weights)
     print(x, ...)
