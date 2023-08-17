@@ -1,46 +1,3 @@
-#' Faster version of do.call
-do_call <- function (what, args, quote = FALSE, envir = parent.frame())  {
-  # source: Gmisc
-  # author: Max Gordon <max@gforge.se>
-  if (quote)
-    args <- lapply(args, enquote)
-
-  if (is.null(names(args)) ||
-      is.data.frame(args)){
-    argn <- args
-    args <- list()
-  }else{
-    # Add all the named arguments
-    argn <- lapply(names(args)[names(args) != ""], as.name)
-    names(argn) <- names(args)[names(args) != ""]
-    # Add the unnamed arguments
-    argn <- c(argn, args[names(args) == ""])
-    args <- args[names(args) != ""]
-  }
-
-  if (inherits(x = what, what = "character")){
-    if(is.character(what)){
-      fn <- strsplit(what, "[:]{2,3}")[[1]]
-      what <- if(length(fn)==1) {
-        get(fn[[1]], envir=envir, mode="function")
-      } else {
-        get(fn[[2]], envir=asNamespace(fn[[1]]), mode="function")
-      }
-    }
-    call <- as.call(c(list(what), argn))
-  }else if (inherits(x = what, "function")){
-    f_name <- deparse(substitute(what))
-    call <- as.call(c(list(as.name(f_name)), argn))
-    args[[f_name]] <- what
-  }else if (inherits(x = what, what="name")){
-    call <- as.call(c(list(what, argn)))
-  }
-
-  eval(call,
-       envir = args,
-       enclos = envir)
-
-}
 
 #' Calculate ScType scores and assign cell types
 #'
@@ -65,7 +22,10 @@ hitype_score <- function(exprs, gs, scaled = FALSE){
     if (is.data.frame(exprs)) {
         exprs <- as.matrix(exprs)
     }
-    if (!is.matrix(exprs)) {
+    if (
+        !is.matrix(exprs) &&
+        !any(class(exprs) %in% c("dgCMatrix", "dgTMatrix"))
+    ) {
         stop("Input scRNA-seq data must be a matrix or data.frame")
     }
     if (sum(dim(exprs) == 0)) {
@@ -112,9 +72,9 @@ hitype_score <- function(exprs, gs, scaled = FALSE){
     #   )
     # )
 
-    all_markers <- unlist(
+    all_markers <- na.omit(unlist(
         lapply(gs, function(x) unlist(lapply(x, function(y) y$markers)))
-    )
+    ))
     # Check if all markers are in the input data
     non_exist_markers <- setdiff(all_markers, rownames(exprs))
     if (length(non_exist_markers) > 0) {
@@ -155,20 +115,29 @@ hitype_score <- function(exprs, gs, scaled = FALSE){
         })
     })
 
+    exprs <- exprs[all_markers, , drop = FALSE]
+    if (scaled) { z <- exprs }  # nocov
+    else if (any(class(exprs) %in% c("dgCMatrix", "dgTMatrix"))) {
+        z <- t(scale(Matrix::t(exprs)))  # nocov
+    } else {
+        z <- t(scale(t(exprs)))
+    }
+
     lapply(
         gs,
-        function(gs_level) hitype_score_level(exprs, gs_level, scaled)
+        function(gs_level) hitype_score_level(z, gs_level)
     )
 }
 
 #' Calculate ScType scores and assign cell types for one level
-#' @param exprs Input scRNA-seq data matrix
+#'
+#' @param z Z-scaled expression matrix
 #'  (rownames - gene names, colnames - cell names)
 #' @param gs_level One level of gene sets prepared by \code{\link{gs_prepare}}
-#' @param scaled Whether the input data is scaled or not
+#'
 #' @return A matrix of cell type scores for each cell
 #'  (rownames - cell types, colnames - cell names)
-hitype_score_level <- function(exprs, gs_level, scaled = FALSE) {
+hitype_score_level <- function(z, gs_level) {
     # gs_level
     # list(
     #     CD4 = list(
@@ -215,17 +184,16 @@ hitype_score_level <- function(exprs, gs_level, scaled = FALSE) {
         stringsAsFactors = FALSE
     )
 
-    Z <- if (scaled) exprs else t(scale(t(exprs)))
-    Z <- Z[marker_sensitivity$gene_, ]
+    z <- z[marker_sensitivity$gene_, ]
 
     # multiple by marker sensitivity
-    Z <- Z * marker_sensitivity$score_marker_sensitivity
+    z <- z * marker_sensitivity$score_marker_sensitivity
 
     gfun <- function(gss_) {
         #       cell1 cell2 cell3
         # Gene1   1     2     3
         # Gene2   4     5     6
-        gs_z = Z[
+        gs_z = z[
             gs_level[[gss_]]$markers, , drop=FALSE
         ] * gs_level[[gss_]]$weights
         len_z = sqrt(nrow(gs_z))
@@ -239,95 +207,59 @@ hitype_score_level <- function(exprs, gs_level, scaled = FALSE) {
         ))
     )
 
-    dimnames(es) = list(names(gs_level), colnames(Z))
+    dimnames(es) = list(names(gs_level), colnames(z))
     es_max <- es[!apply(is.na(es) | es == "", 1, all),] # remove na rows
 
     es_max
 }
 
-EMPTY <- "<EMPTY>"  # nolint
-UNKNOWN <- "<UNKNOWN>"  # nolint
-
 #' Assign cell types based on ScType scores
 #'
 #' @param clusters A named vector of original cluster assignments
 #'  (names - cell names, values - cluster assignments)
-#' @param hitype_scores A list of matrices of cell type scores for each level
+#' @param scores A list of matrices of cell type scores for each level
 #' @param threshold A threshold for low confidence cell type assignment
 #'  The cell types are only assigned for cells with scores higher than the
 #'  threshold * ncells.
-#'  (0 - 1, default 0.25)
+#'  (0 - 1, default 0.05)
 #' @param top The number of top cell types to assign for each cluster
 #' @return A data from of top cell type assignments
 hitype_assign_level <- function(
     clusters,
-    hitype_scores,
+    scores,
     threshold,
     top = 10
 ) {
+    scores <- scales::rescale(as.matrix(scores), to = c(0, 1))
     x <- do_call(
         "rbind",
         lapply(unique(clusters), function(cl) {
+            ncells <- sum(clusters == cl)
             es_max_cl <- sort(
-                rowSums(hitype_scores[ , names(clusters[clusters == cl])]),
+                rowSums(scores[, names(clusters[clusters == cl])]) /
+                ncells,
                 decreasing = TRUE
             )
             head(
                 data.frame(
                     Cluster = cl,
                     CellType = names(es_max_cl),
-                    Scores = es_max_cl,
-                    NCells = sum(clusters == cl)
+                    Score = es_max_cl
                 ),
                 top
             )
         })
     )
     x %>% dplyr::mutate(
-        CellType = dplyr::if_else(
-            Scores < NCells * threshold,
-            UNKNOWN,
-            CellType
-        )
+        CellType = dplyr::if_else(Score < threshold, UNKNOWN, CellType)
     )
-}
-
-#' Get the valid cell type for a given cell type
-#'
-#' @param cell_type A vector cell types, with length the same as the number of
-#'  cell type levels
-#' @param gs A list of cell names for each cell type level
-#' @return A string of valid cell types or NULL if the cell type is invalid
-valid_cell_type <- function(cell_type, gs) {
-    out <- NULL
-    for (ct in cell_type) {
-        if (is.list(gs)) {
-            if (ct %in% names(gs)) {
-                if (ct != UNKNOWN) { out <- paste(c(out, ct), collapse = " ") }
-                gs <- gs[[ct]]
-            } else {
-                return (NULL)
-            }
-        } else {
-            if (length(gs) == 1 && gs == EMPTY) {
-                return (out)
-            }
-            if (ct %in% gs) {
-                if (ct != UNKNOWN) { out <- paste(c(out, ct), collapse = " ") }
-                break
-            } else {
-                return (NULL)
-            }
-        }
-    }
-    return(out)
 }
 
 #' Assign cell types based on ScType scores
 #'
 #' @param clusters A named vector of original cluster assignments
 #'  (names - cell names, values - cluster assignments)
-#' @param hitype_scores A list of matrices of cell type scores for each level
+#' @param scores A list of matrices of cell type scores for each level
 #' @param gs The gene sets prepared by \code{\link{gs_prepare}}
 #'  The `cell_names` is actually used. One could also pass `gs$cell_names`
 #'  directly.
@@ -335,107 +267,61 @@ valid_cell_type <- function(cell_type, gs) {
 #' @param threshold A threshold for low confidence cell type assignment
 #'  The cell types are only assigned for cells with scores higher than the
 #'  threshold * ncells.
-#'  (0 - 1, default 0.25)
+#'  (0 - 1, default 0.05)
+#' @param top The number of top cell types to assign for each cluster in the
+#'  result. Should be less than 10 for single level cell type assignment.
 #' @return A list of mappings from original cluster assignments to cell types
 #'
 #' @export
 hitype_assign <- function(
     clusters,
-    hitype_scores,
+    scores,
     gs = NULL,
     fallback = "Unknown",
-    threshold = 0.05
+    threshold = 0.05,
+    top = 1
 ) {
-    uclusters <- unique(clusters)
-    if (is.data.frame(hitype_scores) || is.matrix(hitype_scores)) {
+    if (is.data.frame(scores) || is.matrix(scores)) {
         # to be compatible with sctype
-        cl_results <- hitype_assign_level(
-            clusters,
-            hitype_scores,
-            threshold,
-            top = 2
-        )
-
-        scores <- cl_results %>%
-            dplyr::group_by(Cluster) %>%
-            dplyr::slice_max(Scores, n = 1, with_ties = TRUE)
-
-        if (nrow(scores) > length(uclusters)) {
-            hitype_scores_count <- scores %>%
-                dplyr::count(Cluster) %>%
-                dplyr::filter(n > 1)
-            warning(
-                paste0(
-                    paste(
-                        "Scores tied in the following clusters:",
-                        paste(hitype_scores_count$Cluster, collapse = ", ")
-                    ),
-                    "\nScores matrix:\n",
-                    paste(capture.output(scores), collapse = "\n")
-                ),
-                immediate. = TRUE
-            )
-        }
-
-        return(
-            scores %>%
-                dplyr::slice_max(Scores, n = 1, with_ties = FALSE) %>%
-                dplyr::ungroup() %>%
-                dplyr::mutate(
-                    CellType = dplyr::if_else(
-                        CellType == UNKNOWN,
-                        fallback,
-                        CellType
-                    ),
-                    CellType = make.unique(CellType)
+        # Cluster, CellType, Score
+        out <- hitype_assign_level(clusters, scores, threshold, top = top) %>%
+            dplyr::mutate(
+                Level = 1,
+                CellType = dplyr::if_else(
+                    CellType == UNKNOWN,
+                    fallback,
+                    CellType
                 )
+            ) %>%
+            dplyr::select(Level, Cluster, CellType, Score)
+    } else {
+        if (is.null(gs)) {
+            stop("hitype_assign: `gs` is required for multi-level assignment.")
+        }
+        if ("cell_names" %in% names(gs)) {
+            gs <- gs$cell_names
+        }
+
+        # Cluster, CellType, Score, Level
+        out <- do_call(
+            rbind,
+            lapply(seq_along(scores), function(i) {
+                cl_ret <- hitype_assign_level(
+                    clusters, scores[[i]], threshold, top = top
+                )
+                cl_ret$Level <- i
+                cl_ret
+            })
         )
     }
 
-    if (is.null(gs)) {
-        stop("hitype_assign: `gs` is required for multi-level assignment.")
-    }
-    if ("cell_names" %in% names(gs)) {
-        gs <- gs$cell_names
-    }
-
-    # Cluster, CellType, Scores, NCells, Level
-    cl_results <- do_call(
-        rbind,
-        lapply(seq_along(hitype_scores), function(i) {
-            cl_ret <- hitype_assign_level(
-                clusters,
-                hitype_scores[[i]],
-                threshold
-            )
-            cl_ret$Level <- i
-            cl_ret
-        })
-    )
-    # Work on each Cluster
-    cl_results <- lapply(
-        split(cl_results, cl_results$Cluster),
-        function(cl_ret) {
-            cell_types <- lapply(unique(cl_ret$Level), function(l) {
-                cl_ret[cl_ret$Level == l, "CellType"]
-            })
-            # Make sure first level listed in order
-            # 1 1 2 2 instead of 1 2 1 2
-            cell_types <- rev(cell_types)
-            all_types <- do_call(expand.grid, cell_types)
-            all_types <- all_types[, rev(colnames(all_types)), drop = FALSE]
-            if (nrow(all_types) == 0) {
-                return(fallback)
-            }
-            for (i in seq_len(nrow(all_types))) {
-                row <- as.character(unname(unlist(all_types[i, , drop = TRUE])))
-                ct <- valid_cell_type(row, gs)
-                if (!is.null(ct)) {
-                    return(ct)
-                }
-            }
-            return(fallback)
-        }
-    )
-    data.frame(Cluster = names(cl_results), CellType = unlist(cl_results))
+    out <- out[
+        order(as.numeric(out$Level), as.numeric(out$Cluster), -out$Score),
+        c("Level", "Cluster", "CellType", "Score"),
+        drop = FALSE
+    ]
+    rownames(out) <- NULL
+    class(out) <- c("hitype_result", class(out))
+    attr(out, "gs") <- gs
+    return(out)
 }

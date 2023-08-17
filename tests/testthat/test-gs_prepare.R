@@ -1,5 +1,3 @@
-UNKNOWN <- "<UNKNOWN>"
-
 test_that("parse_next_imm_levels() works with empty marks", {
     all_next_levels <- c("A", "B", "C")
     next_imm_levels <- parse_next_imm_levels("", all_next_levels)

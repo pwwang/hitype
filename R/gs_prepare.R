@@ -147,21 +147,14 @@ gs_prepare <- function(path_to_db_file, tissue_type = NULL) {
                     genes <- gsub("\\++$|\\-+$", "", markers1)
                     weights <- unlist(sapply(markers1, function(x) {
                         if (endsWith(x, "-")) {
-                            -n_ending(x, "-") / max_minus
+                            -n_ending(x, "-")
                         } else {
                             # +1 to avoid 0
-                            (n_ending(x, "+") + 1) / (max_plus + 1)
+                            n_ending(x, "+") + 1
                         }
                     }))
                     genes <- c(genes, markers2)
-                    mean_pos_weights <- suppressWarnings(
-                        mean(weights[weights > 0], na.rm = TRUE)
-                    )
-                    if (is.na(mean_pos_weights)) { mean_pos_weights <- .25 }
-                    weights <- c(
-                        weights,
-                        rep(-mean_pos_weights, length(markers2))
-                    )
+                    weights <- c(weights, rep(-1, length(markers2)))
                     list(markers = genes, weights = unname(weights))
                 }
             )
@@ -226,27 +219,6 @@ gs_prepare <- function(path_to_db_file, tissue_type = NULL) {
         cell_names <- c(cell_names, cnames)
     }
     list(gene_sets = gene_sets, cell_names = cell_names)
-}
-
-EMPTY <- "<EMPTY>"  # nolint
-UNKNOWN <- "<UNKNOWN>"  # nolint
-
-explode <- function(x, sep = ",") {
-    trimws(unlist(strsplit(x, sep, fixed = TRUE)))
-}
-
-n_ending <- function(x, ending, return_body = FALSE) {
-    regex <- paste0("\\", ending, "+$")
-    body <- gsub(regex, "", x)
-    ne <- nchar(x) - nchar(body)
-    if (return_body) {
-        return(list(n=ne, body=body))
-    }
-    return(ne)
-}
-
-revert_cell_name <- function(cell_name) {
-    sub("\\.\\.\\d+", "", cell_name)
 }
 
 #' Parse all next levels of current cell name

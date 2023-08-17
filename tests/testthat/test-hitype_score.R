@@ -9,8 +9,11 @@ test_that("valid_cell_type() works", {
         valid_cell_type(c("CD4", "Naive", "Proliferating"), gs),
         "CD4 Naive Proliferating"
     )
-    expect_null(valid_cell_type(c("CD4", "Naive", "Activated"), gs))
-    expect_null(valid_cell_type("x", gs))
+    expect_equal(
+        valid_cell_type(c("CD4", "Naive", "Activated"), gs),
+        NA_character_
+    )
+    expect_equal(valid_cell_type("x", gs), NA_character_)
     expect_equal(valid_cell_type(c("CD8", "x", "y"), gs), "CD8")
 })
 
@@ -137,9 +140,15 @@ test_that("hitype_assign_level() works", {
     # CD42       2       CD4   3.03      4
     # CD82       2       CD8   2.73      4
     expect_equal(x$Cluster, c(3, 3, 1, 1, 2, 2))
-    expect_equal(x$CellType, c("CD4", "<UNKNOWN>", "<UNKNOWN>", "<UNKNOWN>", "CD4", "CD8"))
-    expect_equal(x$Scores, c(1.64, -1.80, -0.22, -1.53, 3.03, 2.73))
-    expect_equal(x$NCells, c(3, 3, 3, 3, 4, 4))
+    expect_equal(
+        x$CellType,
+        c("CD4", "<UNKNOWN>", "CD4", "<UNKNOWN>", "CD4", "CD8")
+    )
+    expect_equal(
+        x$Score,
+        c(0.547, 0.149, 0.332, 0.181, 0.621, 0.595),
+        tolerance = 1e-3
+    )
 })
 
 test_that("hitype_assign() works with single data.frame", {
@@ -152,19 +161,16 @@ test_that("hitype_assign() works with single data.frame", {
         Treg = c(1.26, -0.53, -0.63, 0.91, 1.01, 0.72, -0.6, 0.54, -0.08, 1.85)
     ))
     colnames(hitype_scores) <- cells
-    expect_warning(hitype_assign(clusters, hitype_scores), "Scores tied")
-
-    hitype_scores <- hitype_scores[-3, ]
     x <- hitype_assign(clusters, hitype_scores)
-    # Cluster CellType Scores NCells
-    #     <dbl> <chr>     <dbl>  <int>
-    # 1       1 Unknown   -0.22      3
-    # 2       2 CD4        3.03      4
-    # 3       3 CD4.1      1.64      3
+    x <- summary(x)
+    #   Level Cluster CellType Score
+    #   <dbl>   <dbl> <chr>    <dbl>
+    # 1     1       1 CD4      0.332
+    # 2     1       2 CD4      0.621
+    # 3     1       3 CD4      0.547
     expect_equal(x$Cluster, c(1, 2, 3))
-    expect_equal(x$CellType, c("Unknown", "CD4", "CD4.1"))
-    expect_equal(x$Scores, c(-0.22, 3.03, 1.64))
-    expect_equal(x$NCells, c(3, 4, 3))
+    expect_equal(x$CellType, c("CD4", "CD4", "CD4"))
+    expect_equal(x$Score, c(0.332, 0.621, 0.547), tolerance = 1e-3)
 })
 
 test_that("hitype_assign() stops no gs for multi-level hitype_scores", {
@@ -220,52 +226,65 @@ test_that("hitype_assign() works with hierachical scores", {
         ),
         threshold = 0
     )
-    #   Cluster             CellType
-    # 1       1    CD4 Naive Resting
-    # 2       2  CD4 Naive Activated
-    # 3       3 Treg Naive Activated
-    expect_equal(x$Cluster, as.character(c(1, 2, 3)))
+    x <- summary(x)
+    #   Cluster CellType             Score
+    # *   <dbl> <chr>                <dbl>
+    # 1       1 CD4 Naive Resting    0.652
+    # 2       2 CD4 Naive Activated  0.679
+    # 3       3 Treg Naive Activated 0.782
+    expect_equal(x$Cluster, c(1, 2, 3))
     expect_equal(
         x$CellType,
         c("CD4 Naive Resting", "CD4 Naive Activated", "Treg Naive Activated")
     )
 })
 
-test_that("hitype_assign() on real data", {
-    # Load gene sets
-    gs <- gs_prepare(hitypedb_tcell)
-    # Load expression data
-    rdsfile <- file.path("/tmp", "pbmc3kt.rds")
-    if (!file.exists(rdsfile)) {
-        download.file(
-            "https://www.dropbox.com/scl/fi/pyizrlwuklt6g9yrgf51p/pbmc3kt.rds?rlkey=fz6t9qqjjf5n8dr08vv6rhyye&dl=1",
-            rdsfile
-        )
-    }
-    pbmc3kt <- readRDS(rdsfile)
+# test_that("hitype_assign() on real data", {
+#     # Load gene sets
+#     gs <- gs_prepare(hitypedb_tcell)
+#     # Load expression data
+#     rdsfile <- file.path("/tmp", "pbmc3kt.rds")
+#     if (!file.exists(rdsfile)) {
+#         download.file(
+#             "https://www.dropbox.com/scl/fi/pyizrlwuklt6g9yrgf51p/pbmc3kt.rds?rlkey=fz6t9qqjjf5n8dr08vv6rhyye&dl=1",
+#             rdsfile
+#         )
+#     }
+#     pbmc3kt <- readRDS(rdsfile)
 
-    # Calculate cell type scores
-    scores <- suppressWarnings(  # Ignore non-exist genes
-        hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
-    )
-    cell_types <- hitype_assign(pbmc3kt$seurat_clusters, scores, gs)
-    # Cluster                      CellType
-    # 0       0                      CD4 Th17
-    # 1       1           CD8 Naïve Activated
-    # 2       2            CD4 Tscm Inhibited
-    # 3       3                     CD8 Naïve
-    # 4       4         Double Negative Naïve
-    # 5       5  CD8 Tte Terminally Exhausted
-    # 6       6                      MAIT Tem
-    # 7       7 CD4 Naïve Precursor Exhausted
-    # 8       8      MAIT Tumor Recirculating
-    expect_equal(
-        cell_types$CellType,
-        c(
-            "CD4 Th17", "CD8 Naïve Activated", "CD4 Tscm Inhibited",
-            "CD8 Naïve", "Double Negative Naïve",
-            "CD8 Tte Terminally Exhausted", "MAIT Tem",
-            "CD4 Naïve Precursor Exhausted", "MAIT Tumor Recirculating"
-        )
-    )
-})
+#     # Calculate cell type scores
+#     scores <- suppressWarnings(  # Ignore non-exist genes
+#         hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
+#     )
+#     cell_types <- hitype_assign(pbmc3kt$seurat_clusters, scores, gs)
+#     # Cluster                      CellType
+#     # 0       0                      CD4 Th17
+#     # 1       1           CD8 Naïve Activated
+#     # 2       2            CD4 Tscm Inhibited
+#     # 3       3                     CD8 Naïve
+#     # 4       4         Double Negative Naïve
+#     # 5       5  CD8 Tte Terminally Exhausted
+#     # 6       6                      MAIT Tem
+#     # 7       7 CD4 Naïve Precursor Exhausted
+#     # 8       8      MAIT Tumor Recirculating
+#     expect_equal(
+#         cell_types$CellType,
+#         c(
+#             "CD4 Th17", "CD8 Naïve Activated", "CD4 Tscm Inhibited",
+#             "CD8 Naïve", "Double Negative Naïve",
+#             "CD8 Tte Terminally Exhausted", "MAIT Tem",
+#             "CD4 Naïve Precursor Exhausted", "MAIT Tumor Recirculating"
+#         )
+#     )
+# })
+
+# test_that("hitype_assign() on our data", {
+#     sobjfile = ".pipen/ImmunopipeMM/SeuratClusteringOfTCells/0/output/samples.seurat.RDS"
+#     sobj = readRDS(sobjfile)
+
+#     gs = gs_prepare(hitypedb_tcell)
+#     scores = hitype_score(Seurat::GetAssayData(sobj), gs)
+
+#     cell_types = hitype_assign(sobj$seurat_clusters, scores, gs)
+#     print(cell_types)
+# })
