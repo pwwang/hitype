@@ -6,17 +6,18 @@
 \usage{
 hitype_assign(
   clusters,
-  hitype_scores,
+  scores,
   gs = NULL,
   fallback = "Unknown",
-  threshold = 0.25
+  threshold = 0.05,
+  top = 10
 )
 }
 \arguments{
 \item{clusters}{A named vector of original cluster assignments
 (names - cell names, values - cluster assignments)}
 
-\item{hitype_scores}{A list of matrices of cell type scores for each level}
+\item{scores}{A list of matrices of cell type scores for each level}
 
 \item{gs}{The gene sets prepared by \code{\link{gs_prepare}}
 The \code{cell_names} is actually used. One could also pass \code{gs$cell_names}
@@ -27,7 +28,10 @@ directly.}
 \item{threshold}{A threshold for low confidence cell type assignment
 The cell types are only assigned for cells with scores higher than the
 threshold * ncells.
-(0 - 1, default 0.25)}
+(0 - 1, default 0.05)}
+
+\item{top}{The number of top cell types to assign for each cluster in the
+result. Should be less than 10 for single level cell type assignment.}
 }
 \value{
 A list of mappings from original cluster assignments to cell types

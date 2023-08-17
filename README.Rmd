@@ -53,12 +53,10 @@ pbmc3kt <- readRDS(url(
   "https://www.dropbox.com/scl/fi/pyizrlwuklt6g9yrgf51p/pbmc3kt.rds?rlkey=fz6t9qqjjf5n8dr08vv6rhyye&dl=1"
 ))
 
-# Calculate cell type scores
-scores <- hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
-
 # Assign cell types
-cell_types <- hitype_assign(pbmc3kt$seurat_clusters, scores, gs)
-cell_types
+obj <- RunHitype(pbmc3kt, gs)
+
+Seurat::DimPlot(obj, reduction = "umap", group.by = "hitype")
 ```
 
 ## Usage

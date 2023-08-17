@@ -4,15 +4,13 @@
 \alias{hitype_score_level}
 \title{Calculate ScType scores and assign cell types for one level}
 \usage{
-hitype_score_level(exprs, gs_level, scaled = FALSE)
+hitype_score_level(z, gs_level)
 }
 \arguments{
-\item{exprs}{Input scRNA-seq data matrix
+\item{z}{Z-scaled expression matrix
 (rownames - gene names, colnames - cell names)}
 
 \item{gs_level}{One level of gene sets prepared by \code{\link{gs_prepare}}}
-
-\item{scaled}{Whether the input data is scaled or not}
 }
 \value{
 A matrix of cell type scores for each cell
