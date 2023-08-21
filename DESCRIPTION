@@ -12,11 +12,11 @@ RoxygenNote: 7.2.3
 Imports:
     dplyr,
     scales,
+    Seurat,
+    keras (>= 2.13.0),
     HGNChelper
 Remotes:
-    Seurat,
     pwwang/innsight,
-    keras (>= 2.13.0)
 Depends:
     R (>= 4.0)
 LazyData: true
