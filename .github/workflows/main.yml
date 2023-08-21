@@ -37,18 +37,16 @@ jobs:
           Ncpus: '2L'
           use-public-rspm: true
 
-      - name: Restore R package cache
-        uses: actions/cache@v2
-        id: r-package-cache
-        with:
-          path: ${{ env.R_LIBS_USER }}
-          key: ${{ steps.setup-r.outputs.installed-r-version }}-${{ hashFiles('DESCRIPTION') }}
-
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: rcmdcheck remotes Seurat keras pwwang/innsight local::.
+          extra-packages: |
+            rcmdcheck
+            remotes
+            Seurat
+            keras
+            pwwang/innsight
+            local::.
           cache-version: 4
-          upgrade: 'TRUE'
 
       - name: Install system dependencies
         shell: bash
