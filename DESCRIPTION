@@ -14,12 +14,12 @@ Imports:
     scales,
     HGNChelper
 Remotes:
-    pwwang/innsight
 Depends:
     R (>= 4.0)
 LazyData: true
 Suggests:
     Seurat,
+    pwwang/innsight
     keras (>= 2.13.0),
     knitr,
     rmarkdown,

@@ -46,7 +46,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: rcmdcheck remotes local::.
+          extra-packages: rcmdcheck remotes Seurat keras pwwang/innsight local::.
           cache-version: 4
           upgrade: 'TRUE'
 
