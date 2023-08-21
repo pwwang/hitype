@@ -7,7 +7,7 @@
 <!-- badges: end -->
 
 **Hi**erarchical and **hi**gh-resolution cell-type identification for
-single-cell RNA-seq data based on
+single-cell RNA-seq data inspired by
 [ScType](https://github.com/IanevskiAleksandr/sc-type).
 
 ## Features
@@ -15,12 +15,13 @@ single-cell RNA-seq data based on
 -   [x] Compatibility with
     [ScType](https://github.com/IanevskiAleksandr/sc-type)
 -   [x] Hierarchical and high-resolution cell-type identification
+-   [x] Train weights for your markers with a reference dataset
 -   [x] Speed optimization
 -   [x] Support as an R package with unit tests
 
 ## Installation
 
-You can install the development version of hitype like so:
+You can install the development version of `hitype` like so:
 
 ``` r
 if (!requireNamespace("devtools", quietly = TRUE)) {
@@ -31,158 +32,98 @@ devtools::install_github("pwwang/hitype")
 
 ## Quick start
 
+### Prepare the dataset
+
+See also
+<https://satijalab.org/seurat/articles/pbmc3k_tutorial.html#setup-the-seurat-object>
+
+<details>
+<summary>
+Click to expand
+</summary>
+
+``` r
+pbmc <- pbmc3k.SeuratData::pbmc3k
+pbmc[["percent.mt"]] <- Seurat::PercentageFeatureSet(pbmc, pattern = "^MT-")
+pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+pbmc <- Seurat::NormalizeData(pbmc)
+pbmc <- Seurat::FindVariableFeatures(pbmc, selection.method = "vst", nfeatures = 2000)
+pbmc <- Seurat::ScaleData(pbmc, features = rownames(pbmc))
+pbmc <- Seurat::RunPCA(pbmc, features = Seurat::VariableFeatures(object = pbmc))
+pbmc <- Seurat::FindNeighbors(pbmc, dims = 1:10)
+pbmc <- Seurat::FindClusters(pbmc, resolution = 0.5)
+#> Modularity Optimizer version 1.3.0 by Ludo Waltman and Nees Jan van Eck
+#> 
+#> Number of nodes: 2638
+#> Number of edges: 95927
+#> 
+#> Running Louvain algorithm...
+#> Maximum modularity in 10 random starts: 0.8728
+#> Number of communities: 9
+#> Elapsed time: 0 seconds
+pbmc <- Seurat::RunUMAP(pbmc, dims = 1:10)
+```
+
+</details>
+
 ### Use as a Seurat extension
 
 ``` r
 library(hitype)
 
 # Load gene sets
-gs <- gs_prepare(hitypedb_tcell)
-
-# Load seurat object
-pbmc3kt <- readRDS(url(
-  "https://www.dropbox.com/scl/fi/pyizrlwuklt6g9yrgf51p/pbmc3kt.rds?rlkey=fz6t9qqjjf5n8dr08vv6rhyye&dl=1"
-))
+gs <- gs_prepare(hitypedb_pbmc3k)
 
 # Assign cell types
-obj <- RunHitype(pbmc3kt, gs)
+obj <- RunHitype(pbmc, gs)
 
-Seurat::DimPlot(obj, group.by = "hitype")
+Seurat::DimPlot(obj, group.by = "hitype", label = TRUE, label.box = TRUE) +
+  Seurat::NoLegend()
 ```
 
-<img src="man/figures/README-unnamed-chunk-2-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-3-1.png" width="100%" />
+
+Compared to the manual marked cell types: ![Seurat manual marked cell
+types](https://satijalab.org/seurat/articles/pbmc3k_tutorial_files/figure-html/labelplot-1.png)
+
+See also
+<https://satijalab.org/seurat/articles/pbmc3k_tutorial.html#assigning-cell-type-identity-to-clusters>
 
 ### Use as a standalone function
 
 ``` r
-scores <- hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
-cell_types <- hitype_assign(pbmc3kt$seurat_clusters, scores, gs)
+scores <- hitype_score(pbmc@assays$RNA@scale.data, gs, scaled = TRUE)
+cell_types <- hitype_assign(pbmc$seurat_clusters, scores, gs)
 summary(cell_types)
-#> # A tibble: 5 × 3
-#>   Cluster CellType                     Score
-#>   <fct>   <chr>                        <dbl>
-#> 1 0       CD4 Tscm Activated           0.321
-#> 2 1       Double Negative Naïve        0.307
-#> 3 2       CD8 CTL Terminally Exhausted 0.415
-#> 4 3       CD8 Ttm Terminally Exhausted 0.313
-#> 5 4       MAIT Tem                     0.415
+#> # A tibble: 9 × 4
+#>   Level Cluster CellType     Score
+#>   <int> <fct>   <chr>        <dbl>
+#> 1     1 0       Naive CD4+ T 0.104
+#> 2     1 1       CD14+ Mono   0.162
+#> 3     1 2       Memory CD4+  0.114
+#> 4     1 3       B            0.139
+#> 5     1 4       CD8+ T       0.190
+#> 6     1 5       FCFR3A+ Mono 0.366
+#> 7     1 6       NK           0.256
+#> 8     1 7       DC           0.559
+#> 9     1 8       Platelet     0.973
 ```
 
-## Usage
+You may see that we have exactly the same assignment in the Seurat
+tutorial:
 
-### `hitype` is compatible with `ScType`
+| Cluster ID | Markers       | Cell Type    |
+|:-----------|:--------------|:-------------|
+| 0          | IL7R, CCR7    | Naive CD4+ T |
+| 1          | CD14, LYZ     | CD14+ Mono   |
+| 2          | IL7R, S100A4  | Memory CD4+  |
+| 3          | MS4A1         | B            |
+| 4          | CD8A          | CD8+ T       |
+| 5          | FCGR3A, MS4A7 | FCGR3A+ Mono |
+| 6          | GNLY, NKG7    | NK           |
+| 7          | FCER1A, CST3  | DC           |
+| 8          | PPBP          | Platelet     |
 
-Loading packages:
+## Documentation
 
-``` r
-lapply(
-  c("dplyr","Seurat","HGNChelper","openxlsx"),
-  library,
-  character.only = T,
-  quietly = T
-)
-#> [[1]]
-#> [1] "dplyr"     "hitype"    "stats"     "graphics"  "grDevices" "utils"    
-#> [7] "datasets"  "methods"   "base"     
-#> 
-#> [[2]]
-#>  [1] "SeuratObject" "Seurat"       "dplyr"        "hitype"       "stats"       
-#>  [6] "graphics"     "grDevices"    "utils"        "datasets"     "methods"     
-#> [11] "base"        
-#> 
-#> [[3]]
-#>  [1] "HGNChelper"   "SeuratObject" "Seurat"       "dplyr"        "hitype"      
-#>  [6] "stats"        "graphics"     "grDevices"    "utils"        "datasets"    
-#> [11] "methods"      "base"        
-#> 
-#> [[4]]
-#>  [1] "openxlsx"     "HGNChelper"   "SeuratObject" "Seurat"       "dplyr"       
-#>  [6] "hitype"       "stats"        "graphics"     "grDevices"    "utils"       
-#> [11] "datasets"     "methods"      "base"
-
-# load sc-type
-source("https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/R/gene_sets_prepare.R")
-source("https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/R/sctype_score_.R")
-```
-
-``` r
-# scores by ScType
-
-# get cell-type-specific gene sets from our in-built database (DB)
-gs_list = gene_sets_prepare(
-  "https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/ScTypeDB_short.xlsx",
-  "Immune system"
-)
-
-# calculate cell type scores
-scRNAseqData = readRDS(gzcon(url(
-  'https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/exampleData.RDS'
-)))
-es.max = sctype_score(
-  scRNAseqData = scRNAseqData,
-  scaled = TRUE,
-  gs = gs_list$gs_positive,
-  gs2 = gs_list$gs_negative
-)
-es.max[1:5, 1:3]
-#>                  AAACATACAACCAC-1 AAACATTGAGCTAC-1 AAACATTGATCAGC-1
-#> Pro-B cells            -0.8348617         1.584958       -0.8348617
-#> Pre-B cells            -0.8394849         1.774219       -0.8394849
-#> Immature B cells       -0.9172371         2.177044       -0.8598132
-#> Naive B cells          -1.0375502         2.540720       -1.0375502
-#> Memory B cells         -1.0375502         2.540720       -1.0375502
-```
-
-``` r
-# scores by hitype
-library(hitype)
-
-# load gene sets
-gs = gs_prepare(
-  "https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/ScTypeDB_short.xlsx",
-  "Immune system"
-)
-
-# calculate cell type scores
-es.scores = suppressWarnings(hitype_score(scRNAseqData, gs, scaled = TRUE))
-es.scores[[1]][rownames(es.max)[1:5], colnames(es.max)[1:3]]
-#>                  AAACATACAACCAC-1 AAACATTGAGCTAC-1 AAACATTGATCAGC-1
-#> Pro-B cells            -0.8348617         1.584958       -0.8348617
-#> Pre-B cells            -0.8394849         1.774219       -0.8394849
-#> Immature B cells       -0.9172371         2.177044       -0.8598132
-#> Naive B cells          -1.0375502         2.540720       -1.0375502
-#> Memory B cells         -1.0375502         2.540720       -1.0375502
-```
-
-You can see that the results are the same.
-
-### `hitype` is faster for large datasets
-
-``` r
-# speed comparison
-library(ggplot2)
-library(tidyr)
-library(microbenchmark)
-
-exprs <- scRNAseqData[, rep(colnames(scRNAseqData), 10)]
-
-bm <- microbenchmark(
-  ScType = sctype_score(
-    scRNAseqData = exprs,
-    scaled = TRUE,
-    gs = gs_list$gs_positive,
-    gs2 = gs_list$gs_negative
-  ),
-  hitype = hitype_score(exprs, gs, scaled = TRUE),
-  times = 10,
-  unit = "ms"
-)%>%
-  summary() %>%
-  pivot_longer(cols = -c("expr", "neval"), names_to = "measure", values_to = "time")
-
-ggplot(bm, aes(x = measure, y = time, fill = expr)) +
-  geom_col(position = "dodge") +
-  labs(x = NULL, y = "Time (ms)")
-```
-
-<img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" />
+<https://pwwang.github.io/hitype/>

@@ -61,9 +61,6 @@ pbmc <- Seurat::RunPCA(pbmc, features = Seurat::VariableFeatures(object = pbmc))
 pbmc <- Seurat::FindNeighbors(pbmc, dims = 1:10)
 pbmc <- Seurat::FindClusters(pbmc, resolution = 0.5)
 pbmc <- Seurat::RunUMAP(pbmc, dims = 1:10)
-new_cluster_ids <- path_to_gs$cellName
-names(new_cluster_ids) <- levels(pbmc)
-pbmc <- Seurat::RenameIdents(pbmc, new_cluster_ids)
 ```
 </details>
 
@@ -73,12 +70,13 @@ pbmc <- Seurat::RenameIdents(pbmc, new_cluster_ids)
 library(hitype)
 
 # Load gene sets
-gs <- gs_prepare(hitypedb_tcell)
+gs <- gs_prepare(hitypedb_pbmc3k)
 
 # Assign cell types
 obj <- RunHitype(pbmc, gs)
 
-Seurat::DimPlot(obj, group.by = "hitype")
+Seurat::DimPlot(obj, group.by = "hitype", label = TRUE, label.box = TRUE) +
+  Seurat::NoLegend()
 ```
 
 Compared to the manual marked cell types:
@@ -93,6 +91,20 @@ scores <- hitype_score(pbmc@assays$RNA@scale.data, gs, scaled = TRUE)
 cell_types <- hitype_assign(pbmc$seurat_clusters, scores, gs)
 summary(cell_types)
 ```
+
+You may see that we have exactly the same assignment in the Seurat tutorial:
+
+|Cluster ID	| Markers | Cell Type |
+|:----------|:--------|:----------|
+|0|	IL7R, CCR7 |	Naive CD4+ T |
+|1|	CD14, LYZ |	CD14+ Mono|
+|2|	IL7R, S100A4 | Memory CD4+|
+|3|	MS4A1 | B|
+|4|	CD8A | CD8+ T|
+|5|	FCGR3A, MS4A7 | FCGR3A+ Mono|
+|6|	GNLY, NKG7 | NK|
+|7|	FCER1A, CST3 | DC|
+|8|	PPBP | Platelet|
 
 ## Documentation
 
