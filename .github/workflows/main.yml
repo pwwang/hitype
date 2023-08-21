@@ -37,30 +37,18 @@ jobs:
           Ncpus: '2L'
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: |
-            rcmdcheck
-            remotes
-            local::.
-          cache-version: 4
-
-      - name: Install innsight
-        run: remotes::install_github("pwwang/innsight")
-
-      - name: Install system dependencies
-        shell: bash
+      - name: Install dependencies
         run: |
-          . /etc/os-release
-          while read -r cmd
-          do
-            echo "$cmd"
-            sudo $cmd
-          done < <(Rscript -e "writeLines(remotes::system_requirements('$ID-$VERSION_ID'))")
+          install.packages(
+            c("devtools", "dplyr", "scales", "HGNChelper", "Seurat", "keras")
+          )
+          devtools::install_github("satijalab/seurat-data")
+          devtools::install_github("pwwang/innsight")
+          devtools::install_local(force = TRUE)
 
       - name: Install Tensorflow + Keras deps
         run: keras::install_keras(tensorflow = '${{ matrix.tf }}-cpu')
 
-      - name: Check
-        run: rcmdcheck::rcmdcheck(args = '--no-manual', error_on = 'warning', check_dir = 'check')
-
+      - name: Run tests
+        run: |
+          devtools::test()
