@@ -33,12 +33,12 @@ jobs:
       - name: Install dependencies
         run: |
           install.packages(
-            c("remotes", "devtools", "dplyr", "openxlsx", "scales",
+            c("devtools", "dplyr", "openxlsx", "scales",
               "HGNChelper", "Seurat", "keras")
           )
-          remotes::install_github('pwwang/innsight')
-          remotes::install_github('satijalab/seurat-data')
-          remotes::install_deps(dependencies = TRUE)
+          devtools::install_github('pwwang/innsight')
+          devtools::install_github('satijalab/seurat-data')
+          devtolls::install_local(force = TRUE)
         shell: Rscript {0}
       - name: Check
         run: devtools::test(reporter = c("fail", "tap"))
