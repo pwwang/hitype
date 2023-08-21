@@ -12,8 +12,7 @@ RoxygenNote: 7.2.3
 Imports:
     dplyr,
     scales,
-    HGNChelper,
-    keras (>= 2.13.0)
+    HGNChelper
 Remotes:
     pwwang/innsight
 Depends:
@@ -21,6 +20,7 @@ Depends:
 LazyData: true
 Suggests:
     Seurat,
+    keras (>= 2.13.0),
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)
