@@ -45,6 +45,8 @@ jobs:
           devtools::install_github("satijalab/seurat-data")
           devtools::install_github("pwwang/innsight")
           devtools::install_local(force = TRUE)
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Tensorflow + Keras deps
         run: keras::install_keras(tensorflow = '${{ matrix.tf }}-cpu')
