@@ -36,10 +36,12 @@ jobs:
             c("devtools", "dplyr", "openxlsx", "scales",
               "HGNChelper", "Seurat", "keras")
           )
-          devtools::install_github('pwwang/innsight')
-          devtools::install_github('satijalab/seurat-data')
-          devtolls::install_local(force = TRUE)
+          remotes::install_github('pwwang/innsight')
+          remotes::install_github('satijalab/seurat-data')
+          remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       - name: Check
         run: devtools::test(reporter = c("fail", "tap"))
         shell: Rscript {0}
