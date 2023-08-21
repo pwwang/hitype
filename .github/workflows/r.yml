@@ -39,9 +39,10 @@ jobs:
           remotes::install_github('pwwang/innsight')
           remotes::install_github('satijalab/seurat-data')
           remotes::install_deps(dependencies = TRUE)
+          keras::install_keras()
         shell: Rscript {0}
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      - name: Check
+      - name: Run test
         run: devtools::test(reporter = c("fail", "tap"))
         shell: Rscript {0}
