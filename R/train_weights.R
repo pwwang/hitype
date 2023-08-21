@@ -22,6 +22,8 @@
 #'  testing. If only two fractions are provided, no testing set will be used.
 #' @param epochs The number of epochs to train
 #' @param batch_size The batch size
+#' @param run_weights_on_test Whether to run the weights on the test set.
+#'  Requires that `data_split` has three elements.
 #'
 #' @return A data frame with the weights, that can be used directly by
 #'  gs_prepare.
@@ -36,10 +38,11 @@ train_weights <- function(
     range = c(1, 5),
     data_split = c(0.7, 0.2, 0.1),
     epochs = 20,
-    batch_size = 32
+    batch_size = 32,
+    run_weights_on_test = TRUE
 ) {
     set.seed(1)
-    data = prepare_data_for_training(
+    data <- prepare_data_for_training(
         path_to_gs,
         exprs,
         level,
@@ -53,7 +56,9 @@ train_weights <- function(
     test_data_x <- NULL
     test_data_y <- NULL
     if (length(data_split) == 3) {
-        test_idx <- sample(seq_len(nrow(data$z)), floor(nrow(data$z) * data_split[3]))
+        test_idx <- sample(
+            seq_len(nrow(data$z)), floor(nrow(data$z) * data_split[3])
+        )
         test_data_x <- data$z[test_idx, , drop = FALSE]
         test_data_y <- clusters[test_idx]
         rest_idx <- setdiff(seq_len(nrow(data$z)), test_idx)
@@ -62,7 +67,9 @@ train_weights <- function(
     }
     model <- keras_model_sequential() %>%
         layer_masking(mask_value = 0, input_shape = ncol(data$z)) %>%
-        layer_dense(units = 64, activation = "relu", input_shape = ncol(data$z)) %>%
+        layer_dense(
+            units = 64, activation = "relu", input_shape = ncol(data$z)
+        ) %>%
         layer_dropout(rate = 0.2) %>%
         layer_dense(units = 64, activation = "relu") %>%
         layer_dropout(rate = 0.2) %>%
@@ -84,7 +91,10 @@ train_weights <- function(
 
     if (!is.null(test_data_x)) {
         cat("Evaluating on test data\n")
-        test_data_y <- to_categorical(test_data_y - 1, num_classes = length(uclusters))
+        test_data_y <- to_categorical(
+            test_data_y - 1,
+            num_classes = length(uclusters)
+        )
         model %>% evaluate(
             x = test_data_x,
             y = test_data_y,
@@ -101,9 +111,17 @@ train_weights <- function(
     method <- LRP$new(convt, data$z)
     result <- method$get_result(type = "data.frame")
 
-    db <- compile_weights(result, data$gs, level, range)
-    run_db_on_test_data(db, exprs, clusters, scaled, rownames(test_data_x))
-    db
+    weights <- compile_weights(result, data$gs, level, range)
+    if (!is.null(test_data_x) && run_weights_on_test) {
+        run_weights_on_test_data(
+            weights,
+            exprs,
+            clusters,
+            scaled,
+            rownames(test_data_x)
+        )
+    }
+    weights
 }
 
 #' Run compiled weights on test data
@@ -116,7 +134,7 @@ train_weights <- function(
 #' taken from the seurat object.
 #' @param scaled Whether the expression matrix is scaled
 #' @param test_data_idx The row names of the test data
-run_db_on_test_data <- function(
+run_weights_on_test_data <- function(
     db,
     exprs,
     clusters,
@@ -130,7 +148,9 @@ run_db_on_test_data <- function(
     }
 
     gs <- gs_prepare(db)
-    scores <- hitype_score(exprs[, test_data_idx, drop = FALSE], gs, scaled = scaled)
+    scores <- hitype_score(
+        exprs[, test_data_idx, drop = FALSE], gs, scaled = scaled
+    )
     types <- hitype_assign(
         clusters[test_data_idx],
         scores[[1]],
@@ -243,7 +263,11 @@ compile_weights <- function(weights, gs, level, range) {
     )
     db$geneSymbolmore1 <- unlist(lapply(names(gs), function(x) {
         markers <- explode(gs[[x]]$markers)
-        weight <- weights[weights$output_node == x & weights$feature %in% markers, "weight", drop = TRUE]
+        weight <- weights[
+            weights$output_node == x & weights$feature %in% markers,
+            "weight",
+            drop = TRUE
+        ]
         markers <- sapply(seq_along(markers), function(i) {
             sign <- if (weight[i] > 0) "+" else "-"
             suffix <- paste0(rep(sign, abs(weight[i])), collapse = "")

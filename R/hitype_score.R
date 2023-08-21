@@ -17,7 +17,7 @@
 #' @return A list of matrices of cell type scores for each level
 #'  (rownames - cell types, colnames - cell names)
 #' @export
-hitype_score <- function(exprs, gs, scaled = FALSE){
+hitype_score <- function(exprs, gs, scaled = FALSE) {
     # Check input
     if (is.data.frame(exprs)) {
         exprs <- as.matrix(exprs)
@@ -106,6 +106,7 @@ hitype_score <- function(exprs, gs, scaled = FALSE){
         stop("No markers are in the input data. Are they in the same format?")
     }
 
+    exprs <- exprs[all_markers, , drop = FALSE]
     # Filter the genes in gs
     gs <- lapply(gs, function(x) {
         lapply(x, function(y) {
@@ -115,7 +116,6 @@ hitype_score <- function(exprs, gs, scaled = FALSE){
         })
     })
 
-    exprs <- exprs[all_markers, , drop = FALSE]
     if (scaled) { z <- exprs }  # nocov
     else if (any(class(exprs) %in% c("dgCMatrix", "dgTMatrix"))) {
         z <- t(scale(Matrix::t(exprs)))  # nocov
@@ -143,20 +143,15 @@ hitype_score_level <- function(z, gs_level) {
     #     CD4 = list(
     #       # CD4++++, IL2RA+++, IL2RB++, IL2RG+, IL7R
     #       markers = c("CD4", "IL2RA", "IL2RB", "IL2RG", "IL7R", "CD68"),
-    #       weights = c(1, .8, .6, .4, .2, -1)
+    #       weights = c(5, 4, 3, 2, 1)
     #     ),
     #     CD8 = list(
     #       # CD8A++++, CD8B++++, IL2RA+++, IL2RB++, IL2RG+
     #       markers = c("CD8A", "CD8B", "IL2RA", "IL2RB", "IL2RG", "CD68"),
-    #       weights = c(1, 1, .8, .6, .4, -1)
+    #       weights = c(5, 5, 4, 3, 2)
     #     )
     # )
-    all_markers <- unlist(
-        lapply(
-            gs_level,
-            function(x) x$markers
-        )
-    )
+    all_markers <- unlist(lapply(gs_level, function(x) x$markers))
 
     # Marker stat
     # PTPRC    ITGAM    IL2RA    CD247
@@ -186,18 +181,26 @@ hitype_score_level <- function(z, gs_level) {
 
     z <- z[marker_sensitivity$gene_, ]
 
-    # multiple by marker sensitivity
-    z <- z * marker_sensitivity$score_marker_sensitivity
+    # has_plus_minus <- FALSE
+    # for (gs_ in gs_level) {
+    #     if (any(grepl("[+-]$", gs_$markers))) {
+    #         has_plus_minus <- TRUE
+    #         break
+    #     }
+    # }
+    # if (!has_plus_minus) {
+        # multiple by marker sensitivity
+        z <- z * marker_sensitivity$score_marker_sensitivity
+    # }
 
     gfun <- function(gss_) {
         #       cell1 cell2 cell3
         # Gene1   1     2     3
         # Gene2   4     5     6
-        gs_z = z[
-            gs_level[[gss_]]$markers, , drop=FALSE
+        gs_z <- z[
+            gs_level[[gss_]]$markers, , drop = FALSE
         ] * gs_level[[gss_]]$weights
-        len_z = sqrt(nrow(gs_z))
-        colSums(gs_z) / len_z
+        colSums(gs_z) / sqrt(nrow(gs_z))
     }
 
     es = data.frame(t(
@@ -207,8 +210,8 @@ hitype_score_level <- function(z, gs_level) {
         ))
     )
 
-    dimnames(es) = list(names(gs_level), colnames(z))
-    es_max <- es[!apply(is.na(es) | es == "", 1, all),] # remove na rows
+    dimnames(es) <- list(names(gs_level), colnames(z))
+    es_max <- es[!apply(is.na(es) | es == "", 1, all), ] # remove na rows
 
     es_max
 }
@@ -236,8 +239,9 @@ hitype_assign_level <- function(
         lapply(unique(clusters), function(cl) {
             ncells <- sum(clusters == cl)
             es_max_cl <- sort(
-                rowSums(scores[, names(clusters[clusters == cl])]) /
-                ncells,
+                rowSums(
+                    scores[, names(clusters[clusters == cl]), drop = FALSE]
+                ) / ncells,
                 decreasing = TRUE
             )
             head(

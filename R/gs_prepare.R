@@ -141,8 +141,8 @@ gs_prepare <- function(path_to_db_file, tissue_type = NULL) {
             lapply(
                 split(x, revert_cell_name(x$cellName)),
                 function(y) {
-                    markers1 <- unique(explode(y$geneSymbolmore1))
-                    markers2 <- unique(explode(y$geneSymbolmore2))
+                    markers1 <- na.omit(unique(explode(y$geneSymbolmore1)))
+                    markers2 <- na.omit(unique(explode(y$geneSymbolmore2)))
                     markers2 <- setdiff(markers2, markers1)
                     genes <- gsub("\\++$|\\-+$", "", markers1)
                     weights <- unlist(sapply(markers1, function(x) {

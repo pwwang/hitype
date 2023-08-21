@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           install.packages(
-            c("remotes", "devtools", "dplyr", "openxlsx", "scales", "HGNChelper", "Seurat")
+            c("remotes", "devtools", "dplyr", "openxlsx", "scales", "HGNChelper", "Seurat", "SeuratData")
           )
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}

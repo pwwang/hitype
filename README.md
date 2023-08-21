@@ -31,33 +31,41 @@ devtools::install_github("pwwang/hitype")
 
 ## Quick start
 
+### Use as a Seurat extension
+
 ``` r
 library(hitype)
 
 # Load gene sets
 gs <- gs_prepare(hitypedb_tcell)
 
-# Load expression data
+# Load seurat object
 pbmc3kt <- readRDS(url(
   "https://www.dropbox.com/scl/fi/pyizrlwuklt6g9yrgf51p/pbmc3kt.rds?rlkey=fz6t9qqjjf5n8dr08vv6rhyye&dl=1"
 ))
 
-# Calculate cell type scores
-scores <- hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
-
 # Assign cell types
+obj <- RunHitype(pbmc3kt, gs)
+
+Seurat::DimPlot(obj, group.by = "hitype")
+```
+
+<img src="man/figures/README-unnamed-chunk-2-1.png" width="100%" />
+
+### Use as a standalone function
+
+``` r
+scores <- hitype_score(pbmc3kt@assays$RNA@scale.data, gs, scaled = TRUE)
 cell_types <- hitype_assign(pbmc3kt$seurat_clusters, scores, gs)
-cell_types
-#>   Cluster                      CellType
-#> 0       0                      CD4 Th17
-#> 1       1           CD8 Naïve Activated
-#> 2       2            CD4 Tscm Inhibited
-#> 3       3                     CD8 Naïve
-#> 4       4         Double Negative Naïve
-#> 5       5  CD8 Tte Terminally Exhausted
-#> 6       6                      MAIT Tem
-#> 7       7 CD4 Naïve Precursor Exhausted
-#> 8       8      MAIT Tumor Recirculating
+summary(cell_types)
+#> # A tibble: 5 × 3
+#>   Cluster CellType                     Score
+#>   <fct>   <chr>                        <dbl>
+#> 1 0       CD4 Tscm Activated           0.321
+#> 2 1       Double Negative Naïve        0.307
+#> 3 2       CD8 CTL Terminally Exhausted 0.415
+#> 4 3       CD8 Ttm Terminally Exhausted 0.313
+#> 5 4       MAIT Tem                     0.415
 ```
 
 ## Usage
@@ -70,7 +78,8 @@ Loading packages:
 lapply(
   c("dplyr","Seurat","HGNChelper","openxlsx"),
   library,
-  character.only = T
+  character.only = T,
+  quietly = T
 )
 #> [[1]]
 #> [1] "dplyr"     "hitype"    "stats"     "graphics"  "grDevices" "utils"    
@@ -176,4 +185,4 @@ ggplot(bm, aes(x = measure, y = time, fill = expr)) +
   labs(x = NULL, y = "Time (ms)")
 ```
 
-<img src="man/figures/README-unnamed-chunk-6-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" />

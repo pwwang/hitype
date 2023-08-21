@@ -1,3 +1,4 @@
 inst/doc
 /t.*
 /pbmc3kt.rds
+tests/testthat/pbmc3k.rds
