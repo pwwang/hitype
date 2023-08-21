@@ -44,9 +44,11 @@ jobs:
             remotes
             Seurat
             keras
-            pwwang/innsight
             local::.
           cache-version: 4
+
+      - name: Install innsight
+        run: remotes::install_github("pwwang/innsight")
 
       - name: Install system dependencies
         shell: bash
@@ -64,7 +66,3 @@ jobs:
       - name: Check
         run: rcmdcheck::rcmdcheck(args = '--no-manual', error_on = 'warning', check_dir = 'check')
 
-      - name: Show testthat output
-        if: always()
-        shell: bash
-        run: find check -name 'testthat.Rout*' -exec cat '{}' \; || true
