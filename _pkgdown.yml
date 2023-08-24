@@ -1,0 +1,46 @@
+url: https://pwwang.github.io/hitype/
+template:
+  bootstrap: 5
+  bootswatch: lumen
+reference:
+  - title: Cell type scoring and assignment with Hitype
+    contents:
+      - gs_prepare
+      - hitype_score
+      - hitype_assign
+      - RunHitype
+  - title: Marker weight training
+    contents:
+      - train_weights
+  - title: Summarizing Hitype results
+    contents:
+      - summary.hitype_result
+      - print.hitype_result
+articles:
+  - title: Vignettes
+    navbar: ~
+    contents:
+      - prepare-gene-sets
+      - calculate-cell-type-scores-and-assign-cell-types
+      - train-marker-weights
+  - title: Articles
+    navbar: ~
+    contents:
+      - articles/hitype-is-faster
+      - articles/marker-weights-improves-results
+navbar:
+  components:
+    articles:
+      text: Articles
+      menu:
+        - text: Prepare gene sets
+          href: articles/prepare-gene-sets.html
+        - text: Assign cell types
+          href: articles/calculate-cell-type-scores-and-assign-cell-types.html
+        - text: Train marker weights
+          href: articles/train-marker-weights.html
+        - text: ----
+        - text: Hitype is faster
+          href: articles/hitype-is-faster.html
+        - text: Hitype is more accurate
+          href: articles/marker-weights-improves-results.html

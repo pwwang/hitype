@@ -1,4 +1,9 @@
-README:
-	R --quiet --no-save -e "devtools::build_readme()"
+SHELL := /bin/bash
 
-.PHONY: README
+readme:
+	Rscript <(echo "devtools::build_readme()")
+
+docs:
+	Rscript <(echo "devtools::document(); pkgdown::build_site()")
+
+.PHONY: readme docs

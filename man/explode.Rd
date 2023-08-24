@@ -17,3 +17,4 @@ A character vector.
 \description{
 Split the string by the separator and trim the whitespaces.
 }
+\keyword{internal}

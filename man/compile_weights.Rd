@@ -4,7 +4,7 @@
 \alias{compile_weights}
 \title{Compile the weights}
 \usage{
-compile_weights(weights, gs, level)
+compile_weights(weights, gs, level, range)
 }
 \arguments{
 \item{weights}{A data frame with the weights}
@@ -12,6 +12,8 @@ compile_weights(weights, gs, level)
 \item{gs}{The gene sets}
 
 \item{level}{The level of the gene sets}
+
+\item{range}{The range of the weights}
 }
 \value{
 A data frame as the db
@@ -19,3 +21,4 @@ A data frame as the db
 \description{
 Compile the weights
 }
+\keyword{internal}

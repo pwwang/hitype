@@ -18,3 +18,4 @@ A string of valid cell types or NULL if the cell type is invalid
 \description{
 Get the valid cell type for a given cell type
 }
+\keyword{internal}

@@ -81,10 +81,11 @@ Seurat::DimPlot(obj, group.by = "hitype", label = TRUE, label.box = TRUE) +
   Seurat::NoLegend()
 ```
 
-<img src="man/figures/README-unnamed-chunk-3-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-3-1.png" width="75%" />
 
-Compared to the manual marked cell types: ![Seurat manual marked cell
-types](https://satijalab.org/seurat/articles/pbmc3k_tutorial_files/figure-html/labelplot-1.png)
+Compared to the manual marked cell types: <img
+src="https://satijalab.org/seurat/articles/pbmc3k_tutorial_files/figure-html/labelplot-1.png"
+style="width:75.0%" alt="Seurat manual marked cell types" />
 
 See also
 <https://satijalab.org/seurat/articles/pbmc3k_tutorial.html#assigning-cell-type-identity-to-clusters>

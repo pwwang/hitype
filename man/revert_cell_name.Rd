@@ -15,3 +15,4 @@ The cell name without suffix.
 \description{
 Remove the suffix of the cell name.
 }
+\keyword{internal}

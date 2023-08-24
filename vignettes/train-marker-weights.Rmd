@@ -1,0 +1,95 @@
+---
+title: "Train marker weights"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Train marker weights}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+To train the weights for the markers, firstly, we have to have the markers in the original `ScType` format:
+
+```{r}
+markers <- data.frame(
+    cellName = c(
+        "Naive CD4+ T", "CD14+ Mono", "Memory CD4+", "B",
+        "CD8+ T", "FCFR3A+ Mono", "NK", "DC", "Platelet"
+    ),
+    geneSymbolmore1 = c(
+        "IL7R,CCR7",  "CD14,LYZ", "IL7R,S100A4", "MS4A1",
+        "CD8A", "FCGR3A,MS4A7", "GNLY,NKG7", "FCER1A,CST3", "PPBP"
+    ),
+    geneSymbolmore2 = rep("", 9)
+)
+
+markers
+```
+
+Prepare the data for training:
+
+```{r, warning=FALSE, message=FALSE}
+pbmc <- pbmc3k.SeuratData::pbmc3k
+pbmc[["percent.mt"]] <- Seurat::PercentageFeatureSet(pbmc, pattern = "^MT-")
+pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+pbmc <- Seurat::NormalizeData(pbmc)
+pbmc <- Seurat::FindVariableFeatures(pbmc, selection.method = "vst", nfeatures = 2000)
+pbmc <- Seurat::ScaleData(pbmc, features = rownames(pbmc))
+pbmc <- Seurat::RunPCA(pbmc, features = Seurat::VariableFeatures(object = pbmc))
+pbmc <- Seurat::FindNeighbors(pbmc, dims = 1:10)
+pbmc <- Seurat::FindClusters(pbmc, resolution = 0.5)
+pbmc <- Seurat::RunUMAP(pbmc, dims = 1:10)
+new_cluster_ids <- markers$cellName
+names(new_cluster_ids) <- levels(pbmc)
+pbmc <- Seurat::RenameIdents(pbmc, new_cluster_ids)
+```
+
+```{r}
+library(hitype)
+
+weights <- train_weights(path_to_gs = markers, exprs = pbmc)
+weights
+```
+
+Use the trained weights on `ifnb` dataset:
+
+```{r}
+suppressPackageStartupMessages(library(Seurat))
+suppressPackageStartupMessages(library(dplyr))
+
+ifnb <- ifnb.SeuratData::ifnb
+
+# Keep only the cells that exist in the pbmc dataset
+ifnb <- subset(ifnb, subset = seurat_annotations %in% c(
+  "CD14 Mono",
+  "DC",
+  "CD4 Memory T",
+  "CD4 Naive T",
+  "CD8 T",
+  "B",
+  "NK"
+))
+
+ifnb@meta.data <- ifnb@meta.data %>%
+  mutate(seurat_clusters = case_when(
+    seurat_annotations == "CD14 Mono" ~ "CD14+ Mono",
+    seurat_annotations == "CD4 Memory T" ~ "Memory CD4+",
+    seurat_annotations == "CD4 Naive T" ~ "Naive CD4+ T",
+    seurat_annotations == "CD8 T" ~ "CD8+ T",
+    TRUE ~ seurat_annotations
+  ))
+
+gs <- gs_prepare(weights)
+
+scores <- hitype_score(ifnb@assays$RNA@data, gs)
+
+assigned <- hitype_assign(ifnb$seurat_clusters, scores, gs, threshold = 0.01)
+
+summary(assigned)
+```

@@ -1,12 +1,10 @@
+# GNU General Public License v3.0
 
-#' Calculate ScType scores and assign cell types
-#'
-#' GNU General Public License v3.0
-#'
-#' @author
-#' Matt Mulvahill, Panwen Wang
+#' Calculate cell type scores
 #'
 #' @importFrom dplyr %>%
+#'
+#' @author Matt Mulvahill, Panwen Wang
 #'
 #' @param exprs Input scRNA-seq data matrix
 #'  (rownames - gene names, colnames - cell names)
@@ -131,6 +129,8 @@ hitype_score <- function(exprs, gs, scaled = FALSE) {
 
 #' Calculate ScType scores and assign cell types for one level
 #'
+#' @keywords internal
+#'
 #' @param z Z-scaled expression matrix
 #'  (rownames - gene names, colnames - cell names)
 #' @param gs_level One level of gene sets prepared by \code{\link{gs_prepare}}
@@ -218,6 +218,8 @@ hitype_score_level <- function(z, gs_level) {
 
 #' Assign cell types based on ScType scores
 #'
+#' @keywords internal
+#'
 #' @param clusters A named vector of original cluster assignments
 #'  (names - cell names, values - cluster assignments)
 #' @param scores A list of matrices of cell type scores for each level
@@ -259,7 +261,7 @@ hitype_assign_level <- function(
     )
 }
 
-#' Assign cell types based on ScType scores
+#' Generate scores for cell types for each level
 #'
 #' @param clusters A named vector of original cluster assignments
 #'  (names - cell names, values - cluster assignments)
@@ -273,8 +275,11 @@ hitype_assign_level <- function(
 #'  threshold * ncells.
 #'  (0 - 1, default 0.05)
 #' @param top The number of top cell types to assign for each cluster in the
-#'  result. Should be less than 10 for single level cell type assignment.
-#' @return A list of mappings from original cluster assignments to cell types
+#'  result.
+#' @return A dataframe with columns: `Level`, `Cluster`, `CellType` and `Score`.
+#'  For each level and cluster, the top cell types are returned.
+#'  You can use \code{\link{summary.hitype_result}} to print the combination of
+#'  cell types for each cluster.
 #'
 #' @export
 hitype_assign <- function(
@@ -319,8 +324,9 @@ hitype_assign <- function(
         )
     }
 
+    cluster_order <- suppressWarnings(as.numeric(out$Cluster))
     out <- out[
-        order(as.numeric(out$Level), as.numeric(out$Cluster), -out$Score),
+        order(as.numeric(out$Level), cluster_order, -out$Score),
         c("Level", "Cluster", "CellType", "Score"),
         drop = FALSE
     ]

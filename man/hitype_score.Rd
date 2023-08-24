@@ -2,7 +2,7 @@
 % Please edit documentation in R/hitype_score.R
 \name{hitype_score}
 \alias{hitype_score}
-\title{Calculate ScType scores and assign cell types}
+\title{Calculate cell type scores}
 \usage{
 hitype_score(exprs, gs, scaled = FALSE)
 }
@@ -20,7 +20,7 @@ A list of matrices of cell type scores for each level
 (rownames - cell types, colnames - cell names)
 }
 \description{
-GNU General Public License v3.0
+Calculate cell type scores
 }
 \author{
 Matt Mulvahill, Panwen Wang

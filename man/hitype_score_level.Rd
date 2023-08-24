@@ -19,3 +19,4 @@ A matrix of cell type scores for each cell
 \description{
 Calculate ScType scores and assign cell types for one level
 }
+\keyword{internal}

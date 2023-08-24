@@ -17,3 +17,4 @@ The number of ending character.
 \description{
 Get the number of repetitive given ending characters.
 }
+\keyword{internal}

@@ -1,3 +1,8 @@
 ^README\.Rmd$
 ^.+\.rds$
 ^t\..+$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^vignettes/articles$
+^nohup\.out$

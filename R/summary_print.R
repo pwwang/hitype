@@ -16,7 +16,7 @@
 summary.hitype_result <- function(
     hitype_res,
     top = 1,
-    level_weights = function(l) 1 / (10 ^ (l - 1))
+    level_weights = function(l) 1 / (2 ^ (l - 1))
 ) {
     ulevels <- unique(hitype_res$Level)
     if (length(ulevels) == 1) {
@@ -82,6 +82,7 @@ summary.hitype_result <- function(
                     dplyr::ungroup() %>%
                     dplyr::filter(!is.na(CellType)) %>%
                     dplyr::select(Cluster, CellType, Score) %>%
+                    dplyr::distinct(Cluster, CellType, .keep_all = TRUE) %>%
                     dplyr::slice_max(Score, n = top, with_ties = FALSE)
 
                 if (nrow(all_types) == 0) {
@@ -97,7 +98,7 @@ summary.hitype_result <- function(
             }
         )
         do_call(rbind, cl_results) %>%
-            dplyr::mutate(CellType = make.unique(CellType)) %>%
+            # dplyr::mutate(CellType = make.unique(CellType)) %>%
             dplyr::arrange(Cluster, dplyr::desc(Score))
     }
 }
@@ -119,7 +120,7 @@ summary.hitype_result <- function(
 print.hitype_result <- function(
     hitype_res,
     top = 1,
-    level_weights = function(l) 1 / (10 ^ (l - 1)),
+    level_weights = function(l) 1 / (2 ^ (l - 1)),
     ...
 ) {
     # nocov start
@@ -131,6 +132,7 @@ print.hitype_result <- function(
 
 #' Get the valid cell type for a given cell type
 #'
+#' @keywords internal
 #' @param cell_type A vector cell types, with length the same as the number of
 #'  cell type levels
 #' @param gs A list of cell names for each cell type level

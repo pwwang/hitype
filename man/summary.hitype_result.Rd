@@ -4,7 +4,7 @@
 \alias{summary.hitype_result}
 \title{Summarize the hitype_result object}
 \usage{
-\method{summary}{hitype_result}(hitype_res, top = 1, level_weights = function(l) 1/(10^(l - 1)))
+\method{summary}{hitype_result}(hitype_res, top = 1, level_weights = function(l) 1/(2^(l - 1)))
 }
 \arguments{
 \item{top}{The top assigned cell types to return for each cluster}

@@ -45,10 +45,9 @@ test_that("train_weights() works", {
         pbmc <- Seurat::RenameIdents(pbmc, new_cluster_ids)
     }
 
-    db <- train_weights(
+    db <- train_weights_nn(
         path_to_gs = path_to_gs,
         exprs = pbmc
     )
-    saveRDS(db, test_path("../../t.pbmc3k.rds"))
     print(db)
 })

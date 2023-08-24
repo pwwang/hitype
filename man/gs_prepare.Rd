@@ -45,19 +45,21 @@ annotation.}
 }
 \value{
 A list with gene_sets and next_levels. The structure looks like:
-list(
-gene_sets = list(
-# level 1
-list( CD4 = list(markers = c(...), weights = c(...)), ... ),
-# level 2
-list( Naive = list(markers = c(...), weights = c(...)), ... )
-),
-# All possible final cell names
-cell_names = list(CD4 = list(Naive = c("Activated", "Proliferating")))
-)
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{  list(
+     gene_sets = list(
+         # level 1
+         list( CD4 = list(markers = c(...), weights = c(...)), ... ),
+         # level 2
+         list( Naive = list(markers = c(...), weights = c(...)), ... )
+     ),
+     # All possible final cell names
+     cell_names = list(CD4 = list(Naive = c("Activated", "Proliferating")))
+  )
+}\if{html}{\out{</div>}}
 }
 \description{
-GNU General Public License v3.0
+Prepare gene sets for hitype
 }
 \examples{
 # nextLevels example

@@ -1,56 +1,31 @@
 ---
-output: github_document
+title: "Calculate cell type scores and assign cell types"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Calculate cell type scores and assign cell types}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
-
-<!-- README.md is generated from README.Rmd. Please edit that file -->
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>",
-  fig.path = "man/figures/README-",
-  out.width = "100%"
+  comment = "#>"
 )
 ```
 
-# hitype
-
-<!-- badges: start -->
-<!-- badges: end -->
-
-**Hi**erarchical and **hi**gh-resolution cell-type identification for single-cell RNA-seq data inspired by [ScType][1].
-
-## Features
-
-- [x] Compatibility with [ScType][1]
-- [x] Hierarchical and high-resolution cell-type identification
-- [x] Train weights for your markers with a reference dataset
-- [x] Speed optimization
-- [x] Support as an R package with unit tests
-
-[1]: https://github.com/IanevskiAleksandr/sc-type
-
-## Installation
-
-You can install the development version of `hitype` like so:
-
-``` r
-if (!requireNamespace("devtools", quietly = TRUE)) {
-    install.packages("devtools")
-}
-devtools::install_github("pwwang/hitype")
+```{r setup}
+library(hitype)
 ```
 
-## Quick start
+## Using `RunHitype` on `Seurat` object
 
-### Prepare the dataset
+Prepare the seurat object:
 
 See also <https://satijalab.org/seurat/articles/pbmc3k_tutorial.html#setup-the-seurat-object>
 
-<details>
-  <summary>Click to expand</summary>
-
 ```{r, warning=FALSE, message=FALSE}
+suppressWarnings(SeuratData::InstallData("pbmc3k"))
 pbmc <- pbmc3k.SeuratData::pbmc3k
 pbmc[["percent.mt"]] <- Seurat::PercentageFeatureSet(pbmc, pattern = "^MT-")
 pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
@@ -62,9 +37,6 @@ pbmc <- Seurat::FindNeighbors(pbmc, dims = 1:10)
 pbmc <- Seurat::FindClusters(pbmc, resolution = 0.5)
 pbmc <- Seurat::RunUMAP(pbmc, dims = 1:10)
 ```
-</details>
-
-### Use as a Seurat extension
 
 ```{r, warning=FALSE, out.width="75%"}
 library(hitype)
@@ -80,11 +52,12 @@ Seurat::DimPlot(obj, group.by = "hitype", label = TRUE, label.box = TRUE) +
 ```
 
 Compared to the manual marked cell types:
+
 ![Seurat manual marked cell types](https://satijalab.org/seurat/articles/pbmc3k_tutorial_files/figure-html/labelplot-1.png){width=75%}
 
 See also <https://satijalab.org/seurat/articles/pbmc3k_tutorial.html#assigning-cell-type-identity-to-clusters>
 
-### Use as standalone functions
+## Using `hitype_score` and `hitype_assign` on `Seurat` directly
 
 ```{r, warning=FALSE}
 scores <- hitype_score(pbmc@assays$RNA@scale.data, gs, scaled = TRUE)
@@ -92,7 +65,7 @@ cell_types <- hitype_assign(pbmc$seurat_clusters, scores, gs)
 summary(cell_types)
 ```
 
-You may see that we have exactly the same assignment in the Seurat tutorial:
+compare to the manual marked cell types:
 
 |Cluster ID	| Markers | Cell Type |
 |:----------|:--------|:----------|
@@ -106,6 +79,17 @@ You may see that we have exactly the same assignment in the Seurat tutorial:
 |7|	FCER1A, CST3 | DC|
 |8|	PPBP | Platelet|
 
-## Documentation
+See: <https://satijalab.org/seurat/articles/pbmc3k_tutorial.html#assigning-cell-type-identity-to-clusters>
 
-<https://pwwang.github.io/hitype/>
+## Exploring the result of `hitype_assign`
+
+The result of `hitype_assign` is a `data.frame` with the following columns:
+
+- `Level`: the level of the cell type in the hierarchy
+- `Cluster`: the cluster ID
+- `CellType`: the cell type name
+- `Score`: the score of the cell type
+
+```{r}
+head(cell_types)
+```

@@ -17,3 +17,4 @@ A vector of possible next immediate levels of cell types
 \description{
 Parse next immediate levels of cell types
 }
+\keyword{internal}

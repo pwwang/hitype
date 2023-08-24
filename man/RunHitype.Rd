@@ -8,17 +8,7 @@
 \usage{
 RunHitype(object, ...)
 
-\method{RunHitype}{default}(
-  object,
-  gs = NULL,
-  fallback = "Unknown",
-  threshold = 0.05,
-  level_weights = function(l) 1/(10^(l - 1)),
-  slot = "data",
-  assay = NULL,
-  scaled = FALSE,
-  ...
-)
+\method{RunHitype}{default}(object, ...)
 
 \method{RunHitype}{Seurat}(
   object,
@@ -41,7 +31,7 @@ RunHitype(object, ...)
 
 \item{threshold}{A threshold for low confidence cell type assignment
 The cell types are only assigned for cells with scores higher than the
-threshold * ncells.
+threshold.
 (0 - 1, default 0.05)}
 
 \item{level_weights}{The weights for each level of the hierarchy to calculate
@@ -51,11 +41,15 @@ or a single numeric value to be used for all levels
 It can also be a function that takes the levels as input and returns a
 numeric vectors as the weights.}
 
-\item{slot}{The slot to use for GetAssayData}
+\item{slot}{The slot to use for \code{GetAssayData}}
 
-\item{assay}{The assay to use for GetAssayData}
+\item{assay}{The assay to use for \code{GetAssayData}}
 
-\item{scaled}{Whether the data from GetAssayData is scaled}
+\item{scaled}{Whether the data from \code{GetAssayData} is scaled}
+}
+\value{
+The Seurat object with the cell types (named \code{hitype}) added to the
+metadata
 }
 \description{
 Run hitype_assign for a Seurat object

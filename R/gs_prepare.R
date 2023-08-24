@@ -1,9 +1,8 @@
+# GNU General Public License v3.0
+
 #' Prepare gene sets for hitype
 #'
-#' GNU General Public License v3.0
-#'
-#' @author
-#' Matt Mulvahill, Panwen Wang
+#' @author Matt Mulvahill, Panwen Wang
 #'
 #' @param path_to_db_file A data frame with markers or
 #'   Path to the marker gene database file, it should be
@@ -67,6 +66,7 @@
 #' #   CD4 Memory
 #'
 #' @return A list with gene_sets and next_levels. The structure looks like:
+#' ```r
 #'   list(
 #'      gene_sets = list(
 #'          # level 1
@@ -77,7 +77,7 @@
 #'      # All possible final cell names
 #'      cell_names = list(CD4 = list(Naive = c("Activated", "Proliferating")))
 #'   )
-#'
+#' ```
 #' @export
 gs_prepare <- function(path_to_db_file, tissue_type = NULL) {
     if (is.data.frame(path_to_db_file)) {
@@ -144,13 +144,17 @@ gs_prepare <- function(path_to_db_file, tissue_type = NULL) {
                     markers1 <- na.omit(unique(explode(y$geneSymbolmore1)))
                     markers2 <- na.omit(unique(explode(y$geneSymbolmore2)))
                     markers2 <- setdiff(markers2, markers1)
-                    genes <- gsub("\\++$|\\-+$", "", markers1)
+                    genes <- gsub("\\++$|\\-+|\\*$", "", markers1)
                     weights <- unlist(sapply(markers1, function(x) {
                         if (endsWith(x, "-")) {
                             -n_ending(x, "-")
-                        } else {
+                        } else if (endsWith(x, "+")) {
                             # +1 to avoid 0
                             n_ending(x, "+") + 1
+                        } else if (endsWith(x, "*")) {
+                            0
+                        } else {
+                            1
                         }
                     }))
                     genes <- c(genes, markers2)
@@ -223,6 +227,8 @@ gs_prepare <- function(path_to_db_file, tissue_type = NULL) {
 
 #' Parse all next levels of current cell name
 #'
+#' @keywords internal
+#'
 #' @param cell_name The current cell name
 #' @param level The current level
 #' @param max_level The max level
@@ -275,6 +281,8 @@ parse_next_levels <- function(
 }
 
 #' Parse next immediate levels of cell types
+#'
+#' @keywords internal
 #'
 #' @param nl_marks The marks for the next levels of cell types
 #' @param all_next_levels All possible next levels of cell types

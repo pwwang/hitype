@@ -33,3 +33,4 @@ A list with the gene sets, the z matrix and the clusters
 \description{
 Prepare the data for weight training
 }
+\keyword{internal}

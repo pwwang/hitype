@@ -2,7 +2,7 @@
 % Please edit documentation in R/hitype_score.R
 \name{hitype_assign}
 \alias{hitype_assign}
-\title{Assign cell types based on ScType scores}
+\title{Generate scores for cell types for each level}
 \usage{
 hitype_assign(
   clusters,
@@ -31,11 +31,14 @@ threshold * ncells.
 (0 - 1, default 0.05)}
 
 \item{top}{The number of top cell types to assign for each cluster in the
-result. Should be less than 10 for single level cell type assignment.}
+result.}
 }
 \value{
-A list of mappings from original cluster assignments to cell types
+A dataframe with columns: \code{Level}, \code{Cluster}, \code{CellType} and \code{Score}.
+For each level and cluster, the top cell types are returned.
+You can use \code{\link{summary.hitype_result}} to print the combination of
+cell types for each cluster.
 }
 \description{
-Assign cell types based on ScType scores
+Generate scores for cell types for each level
 }

@@ -27,3 +27,4 @@ Faster version of do.call
 \author{
 Max Gordon \if{html}{\out{<max at gforge.se>}}
 }
+\keyword{internal}

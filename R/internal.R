@@ -1,8 +1,9 @@
-
 EMPTY <- "<EMPTY>" # nolint
 UNKNOWN <- "<UNKNOWN>" # nolint
 
 #' Split the string by the separator and trim the whitespaces.
+#'
+#' @keywords internal
 #'
 #' @param x A string.
 #' @param sep The separator.
@@ -13,6 +14,8 @@ explode <- function(x, sep = ",") {
 }
 
 #' Get the number of repetitive given ending characters.
+#'
+#' @keywords internal
 #'
 #' @param x A string.
 #' @param ending The ending character.
@@ -29,11 +32,14 @@ n_ending <- function(x, ending) {
 #' @param cell_name A cell name.
 #'
 #' @return The cell name without suffix.
+#' @keywords internal
 revert_cell_name <- function(cell_name) {
   sub("\\.\\.\\d+", "", cell_name)
 }
 
 #' Faster version of do.call
+#'
+#' @keywords internal
 #'
 #' @source Gmisc
 #' @author Max Gordon <max at gforge.se>

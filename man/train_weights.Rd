@@ -10,9 +10,11 @@ train_weights(
   level = 1,
   scaled = FALSE,
   clusters = NULL,
+  range = c(1, 5),
   data_split = c(0.7, 0.2, 0.1),
   epochs = 20,
-  batch_size = 32
+  batch_size = 32,
+  run_weights_on_test = TRUE
 )
 }
 \arguments{
@@ -30,16 +32,21 @@ you have multiple levels of gene sets.}
 If \code{exprs} is a seurat object, this is ignored. The cluster ids are
 taken from the seurat object.}
 
+\item{range}{The range of the weights}
+
 \item{data_split}{A vector of fractions for training, validation and
 testing. If only two fractions are provided, no testing set will be used.}
 
 \item{epochs}{The number of epochs to train}
 
 \item{batch_size}{The batch size}
+
+\item{run_weights_on_test}{Whether to run the weights on the test set.
+Requires that \code{data_split} has three elements.}
 }
 \value{
 A data frame with the weights, that can be used directly by
-gs_prepare.
+\code{\link{gs_prepare}}.
 }
 \description{
 Train weights for the markers

@@ -25,3 +25,4 @@ A data from of top cell type assignments
 \description{
 Assign cell types based on ScType scores
 }
+\keyword{internal}
