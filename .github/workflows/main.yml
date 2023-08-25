@@ -53,6 +53,7 @@ jobs:
       - name: Install hitype
         run: |
           # Unable to be installed by setup-r-dependencies
+          devtools::install_github('satijalab/seurat-data')
           devtools::install_github("pwwang/innsight")
           devtools::install_local(force = TRUE)
         env:

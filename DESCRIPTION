@@ -13,6 +13,7 @@ Imports:
     dplyr,
     scales,
     Seurat,
+    openxlsx,
     keras (>= 2.13.0),
     HGNChelper
 Remotes:
