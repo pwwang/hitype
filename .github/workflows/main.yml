@@ -46,7 +46,15 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           cache-version: 2
-          extra-packages: any::devtools, local::.
+          extra-packages: any::devtools
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install hitype
+        run: |
+          # Unable to be installed by setup-r-dependencies
+          devtools::install_github("pwwang/innsight")
+          devtools::install_local(force = TRUE)
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
