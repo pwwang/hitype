@@ -70,8 +70,10 @@ jobs:
       #   env:
       #     GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Tensorflow + Keras deps
-        run: keras::install_keras(tensorflow = '${{ matrix.tf }}-cpu')
+      - name: Install Tensorflow + Keras + torch deps
+        run: |
+          keras::install_keras(tensorflow = '${{ matrix.tf }}-cpu')
+          torch::install_torch()
 
       - name: Run tests
         run: |
