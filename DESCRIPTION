@@ -16,7 +16,7 @@ Imports:
     keras (>= 2.13.0),
     HGNChelper
 Remotes:
-    pwwang/innsight,
+    pwwang/innsight
 Depends:
     R (>= 4.0)
 LazyData: true
