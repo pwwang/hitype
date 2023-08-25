@@ -77,4 +77,4 @@ jobs:
 
       - name: Run tests
         run: |
-          testthat::test_check()
+          devtools::test(stop_on_failure=TRUE)
