@@ -29,7 +29,7 @@
 #'  \code{\link{gs_prepare}}.
 #'
 #' @export
-train_weights_nn <- function(
+train_weights <- function(
     path_to_gs,
     exprs,
     level = 1,
@@ -124,85 +124,86 @@ train_weights_nn <- function(
     weights
 }
 
-#' Train weights for the markers using multinomial logistic regression
-#'
-#' @importFrom nnet multinom
-#'
-#' @param path_to_gs Path to the gene set file without weights
-#' @param exprs The expression matrix, or a seurat object
-#'  (rows: genes, columns: samples/cells)
-#' @param level The level of the gene sets to train weights for if
-#'  you have multiple levels of gene sets.
-#' @param scaled Whether the expression matrix is scaled
-#' @param clusters A named vector of cluster ids
-#'  If `exprs` is a seurat object, this is ignored. The cluster ids are
-#'  taken from the seurat object.
-#' @param range The range of the weights
-#' @param data_split A vector of fractions for training and
-#'  testing. If only 1 fraction are provided, no testing set will be used.
-#' @param run_weights_on_test Whether to run the weights on the test set.
-#'  Requires that `data_split` has 2 elements.
-#'
-#' @return A data frame with the weights, that can be used directly by
-#'  \code{\link{gs_prepare}}.
-#'
-#' @export
-train_weights_mlr <- function(
-    path_to_gs,
-    exprs,
-    level = 1,
-    scaled = FALSE,
-    clusters = NULL,
-    range = c(1, 5),
-    data_split = c(0.7, 0.3),
-    run_weights_on_test = TRUE
-) {
-    set.seed(1)
-    data <- prepare_data_for_training(
-        path_to_gs,
-        exprs,
-        level,
-        scaled,
-        clusters
-    )
+# #' Train weights for the markers using multinomial logistic regression
+# #'
+# #' @importFrom nnet multinom
+# #' @importFrom tidyr pivot_longer
+# #'
+# #' @param path_to_gs Path to the gene set file without weights
+# #' @param exprs The expression matrix, or a seurat object
+# #'  (rows: genes, columns: samples/cells)
+# #' @param level The level of the gene sets to train weights for if
+# #'  you have multiple levels of gene sets.
+# #' @param scaled Whether the expression matrix is scaled
+# #' @param clusters A named vector of cluster ids
+# #'  If `exprs` is a seurat object, this is ignored. The cluster ids are
+# #'  taken from the seurat object.
+# #' @param range The range of the weights
+# #' @param data_split A vector of fractions for training and
+# #'  testing. If only 1 fraction are provided, no testing set will be used.
+# #' @param run_weights_on_test Whether to run the weights on the test set.
+# #'  Requires that `data_split` has 2 elements.
+# #'
+# #' @return A data frame with the weights, that can be used directly by
+# #'  \code{\link{gs_prepare}}.
+# #'
+# #' @export
+# train_weights_mlr <- function(
+#     path_to_gs,
+#     exprs,
+#     level = 1,
+#     scaled = FALSE,
+#     clusters = NULL,
+#     range = c(1, 5),
+#     data_split = c(0.7, 0.3),
+#     run_weights_on_test = TRUE
+# ) {
+#     set.seed(1)
+#     data <- prepare_data_for_training(
+#         path_to_gs,
+#         exprs,
+#         level,
+#         scaled,
+#         clusters
+#     )
 
-    z <- data$z
-    z$cluster <- clusters[rownames(z)]
+#     z <- data$z
+#     z$cluster <- clusters[rownames(z)]
 
-    test_data <- NULL
-    if (length(data_split) == 2) {
-        test_idx <- sample(
-            seq_len(nrow(data$z)), floor(nrow(data$z) * data_split[2])
-        )
-        test_data <- data$z[test_idx, , drop = FALSE]
-        rest_idx <- setdiff(seq_len(nrow(data$z)), test_idx)
-        z <- z[rest_idx, , drop = FALSE]
-        clusters <- clusters[rest_idx]
-    }
+#     test_data <- NULL
+#     if (length(data_split) == 2) {
+#         test_idx <- sample(
+#             seq_len(nrow(data$z)), floor(nrow(data$z) * data_split[2])
+#         )
+#         test_data <- data$z[test_idx, , drop = FALSE]
+#         rest_idx <- setdiff(seq_len(nrow(data$z)), test_idx)
+#         z <- z[rest_idx, , drop = FALSE]
+#         clusters <- clusters[rest_idx]
+#     }
 
-    model <- multinom(cluster ~ ., data = z)
-    result <- summary(model)$coefficients
-    result <- as.data.frame(result[, -1, drop = FALSE])
-    result$output_node <- rownames(result)
-    result <- result %>%
-        tidyr::pivot_longer(
-            -"output_node",
-            names_to = "feature",
-            values_to = "value"
-        )
+#     model <- multinom(cluster ~ ., data = z)
+#     result <- summary(model)$coefficients
+#     result <- as.data.frame(result[, -1, drop = FALSE])
+#     result$output_node <- rownames(result)
+#     result <- result %>%
+#         pivot_longer(
+#             -"output_node",
+#             names_to = "feature",
+#             values_to = "value"
+#         )
 
-    weights <- compile_weights(result, data$gs, level, range)
-    if (!is.null(test_data) && run_weights_on_test) {
-        run_weights_on_test_data(
-            weights,
-            exprs,
-            clusters,
-            scaled,
-            rownames(test_data_x)
-        )
-    }
-    weights
-}
+#     weights <- compile_weights(result, data$gs, level, range)
+#     if (!is.null(test_data) && run_weights_on_test) {
+#         run_weights_on_test_data(
+#             weights,
+#             exprs,
+#             clusters,
+#             scaled,
+#             rownames(test_data_x)
+#         )
+#     }
+#     weights
+# }
 
 #' Run compiled weights on test data
 #'

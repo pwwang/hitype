@@ -37,6 +37,11 @@ jobs:
           Ncpus: '2L'
           use-public-rspm: true
 
+      - name: Install libglpk40 for igraph
+        run: |
+          sudo apt-get install -y libglpk40
+        shell: bash
+
       - name: Install dependencies
         run: |
           install.packages(
@@ -44,7 +49,7 @@ jobs:
           )
           devtools::install_github("satijalab/seurat-data")
           devtools::install_github("pwwang/innsight")
-          devtools::install_local(force = TRUE)
+          devtools::install_local(., force = TRUE)
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
