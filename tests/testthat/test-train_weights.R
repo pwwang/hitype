@@ -49,5 +49,6 @@ test_that("train_weights() works", {
         path_to_gs = path_to_gs,
         exprs = pbmc
     )
-    print(db)
+    expect_true(is.data.frame(db))
+    expect_equal(nrow(db), 9)
 })
