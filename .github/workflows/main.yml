@@ -21,6 +21,10 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
     strategy:
       matrix:
         include:
@@ -46,9 +50,7 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           cache-version: 2
-          extra-packages: any::devtools
-        env:
-          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+          extra-packages: any::devtools, any::pkgdown
 
       - name: Install hitype
         run: |
@@ -56,8 +58,6 @@ jobs:
           devtools::install_github('satijalab/seurat-data')
           devtools::install_github("pwwang/innsight")
           devtools::install_local(force = TRUE)
-        env:
-          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Restore cached virtual environment
         uses: actions/cache@v3
@@ -86,3 +86,15 @@ jobs:
       - name: Run tests
         run: |
           devtools::test(stop_on_failure=TRUE)
+
+      - name: Build pkgdown site
+        run: |
+          pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
+
+      - name: Deploy to GitHub pages
+        if: github.event_name != 'pull_request'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          clean: false
+          branch: gh-pages
+          folder: docs

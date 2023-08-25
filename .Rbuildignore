@@ -6,3 +6,4 @@
 ^pkgdown$
 ^vignettes/articles$
 ^nohup\.out$
+^\.github$
