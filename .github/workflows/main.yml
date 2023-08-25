@@ -77,4 +77,4 @@ jobs:
 
       - name: Run tests
         run: |
-          devtools::test()
+          testthat::test_check()
