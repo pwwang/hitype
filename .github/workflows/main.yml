@@ -59,20 +59,27 @@ jobs:
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
-      # - name: Install dependencies
-      #   run: |
-      #     install.packages(
-      #       c("devtools", "dplyr", "scales", "HGNChelper", "Seurat", "keras")
-      #     )
-      #     devtools::install_github("satijalab/seurat-data")
-      #     devtools::install_github("pwwang/innsight")
-      #     devtools::install_local(force = TRUE)
-      #   env:
-      #     GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      - name: Restore cached virtual environment
+        uses: syphar/restore-virtualenv@v1
+        id: cache-virtualenv
+        with:
+          custom_virtualenv_dir: /home/runner/.virtualenvs
 
-      - name: Install Tensorflow + Keras + torch deps
+      - name: Install Tensorflow + Keras deps
+        if: steps.cache-virtualenv.outputs.cache-hit != 'true'
         run: |
           keras::install_keras(tensorflow = '${{ matrix.tf }}-cpu')
+
+      - name: Restore cached torch dependencies
+        uses: actions/cache@v3
+        id: cache-torch
+        with:
+          path: /opt/R/4.2.0/lib/R/library/torch
+          key: R-${{matrix.r}}-torch
+
+      - name: Download torch for r-torch
+        if: steps.cache-torch.outputs.cache-hit != 'true'
+        run: |
           torch::install_torch()
 
       - name: Run tests
