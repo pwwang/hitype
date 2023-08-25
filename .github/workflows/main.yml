@@ -39,19 +39,27 @@ jobs:
 
       - name: Install libglpk40 for igraph
         run: |
-          sudo apt-get install -y libglpk40
+          sudo apt-get update -y && sudo apt-get install -y libglpk40
         shell: bash
 
-      - name: Install dependencies
-        run: |
-          install.packages(
-            c("devtools", "dplyr", "scales", "HGNChelper", "Seurat", "keras")
-          )
-          devtools::install_github("satijalab/seurat-data")
-          devtools::install_github("pwwang/innsight")
-          devtools::install_local(., force = TRUE)
+      - name: Setup R dependencies
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          cache-version: 2
+          extra-packages: any::devtools, local::.
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: Install dependencies
+      #   run: |
+      #     install.packages(
+      #       c("devtools", "dplyr", "scales", "HGNChelper", "Seurat", "keras")
+      #     )
+      #     devtools::install_github("satijalab/seurat-data")
+      #     devtools::install_github("pwwang/innsight")
+      #     devtools::install_local(force = TRUE)
+      #   env:
+      #     GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Tensorflow + Keras deps
         run: keras::install_keras(tensorflow = '${{ matrix.tf }}-cpu')
