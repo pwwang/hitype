@@ -60,10 +60,11 @@ jobs:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Restore cached virtual environment
-        uses: syphar/restore-virtualenv@v1
+        uses: actions/cache@v3
         id: cache-virtualenv
         with:
-          custom_virtualenv_dir: /home/runner/.virtualenvs
+          path: /home/runner/.virtualenvs
+          key: R-${{matrix.r}}-tensorflow-${{matrix.tf}}
 
       - name: Install Tensorflow + Keras deps
         if: steps.cache-virtualenv.outputs.cache-hit != 'true'
