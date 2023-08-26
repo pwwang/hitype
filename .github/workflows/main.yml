@@ -58,6 +58,8 @@ jobs:
           devtools::install_github('satijalab/seurat-data')
           devtools::install_github("pwwang/innsight")
           devtools::install_local(force = TRUE)
+          SeuratData::InstallData("pbmc3k")
+          SeuratData::InstallData("ifnb")
 
       - name: Restore cached virtual environment
         uses: actions/cache@v3
