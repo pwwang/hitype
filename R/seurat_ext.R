@@ -18,6 +18,7 @@
 #'  or a single numeric value to be used for all levels
 #'  It can also be a function that takes the levels as input and returns a
 #'  numeric vectors as the weights.
+#' @param make_unique Whether to make the cell type names unique
 #' @param slot The slot to use for `GetAssayData`
 #' @param assay The assay to use for `GetAssayData`
 #' @param scaled Whether the data from `GetAssayData` is scaled
@@ -42,6 +43,7 @@ RunHitype.Seurat <- function(
     fallback = "Unknown",
     threshold = 0.05,
     level_weights = function(l) 1 / (10 ^ (l - 1)),
+    make_unique = FALSE,
     slot = "data",
     assay = NULL,
     scaled = FALSE,
@@ -61,7 +63,11 @@ RunHitype.Seurat <- function(
         threshold = threshold
     )
     # Level, Cluster, CellType, Score
-    cell_types <- summary(cell_types, level_weights = level_weights)
+    cell_types <- summary(
+        cell_types,
+        level_weights = level_weights,
+        make_unique = make_unique
+    )
     # Add to metadata
     object@meta.data$hitype <- cell_types[
         match(clusters, cell_types$Cluster),

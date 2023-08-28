@@ -16,6 +16,7 @@ RunHitype(object, ...)
   fallback = "Unknown",
   threshold = 0.05,
   level_weights = function(l) 1/(10^(l - 1)),
+  make_unique = FALSE,
   slot = "data",
   assay = NULL,
   scaled = FALSE,
@@ -40,6 +41,8 @@ It should be either a numeric vector of length equal to the number of levels
 or a single numeric value to be used for all levels
 It can also be a function that takes the levels as input and returns a
 numeric vectors as the weights.}
+
+\item{make_unique}{Whether to make the cell type names unique}
 
 \item{slot}{The slot to use for \code{GetAssayData}}
 
