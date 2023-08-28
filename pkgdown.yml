@@ -7,7 +7,7 @@ articles:
   calculate-cell-type-scores-and-assign-cell-types: calculate-cell-type-scores-and-assign-cell-types.html
   prepare-gene-sets: prepare-gene-sets.html
   train-marker-weights: train-marker-weights.html
-last_built: 2023-08-28T20:43Z
+last_built: 2023-08-28T22:35Z
 urls:
   reference: https://pwwang.github.io/hitype/reference
   article: https://pwwang.github.io/hitype/articles
