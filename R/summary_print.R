@@ -9,6 +9,7 @@
 #'  or a single numeric value to be used for all levels
 #'  It can also be a function that takes the levels as input and returns a
 #'  numeric vectors as the weights.
+#' @param make_unique Whether to make the cell type names unique
 #'
 #' @return The summary of the hitype_result object
 #'
@@ -16,11 +17,12 @@
 summary.hitype_result <- function(
     hitype_res,
     top = 1,
-    level_weights = function(l) 1 / (2 ^ (l - 1))
+    level_weights = function(l) 1 / (2 ^ (l - 1)),
+    make_unique = FALSE
 ) {
     ulevels <- unique(hitype_res$Level)
     if (length(ulevels) == 1) {
-        hitype_res %>%
+        out <- hitype_res %>%
             dplyr::group_by(Cluster) %>%
             dplyr::slice_max(Score, n = top, with_ties = FALSE) %>%
             dplyr::ungroup()
@@ -97,10 +99,14 @@ summary.hitype_result <- function(
                 head(all_types, top)
             }
         )
-        do_call(rbind, cl_results) %>%
+        out <- do_call(rbind, cl_results) %>%
             # dplyr::mutate(CellType = make.unique(CellType)) %>%
             dplyr::arrange(Cluster, dplyr::desc(Score))
     }
+    if (make_unique) {
+        out$CellType <- make.unique(out$CellType)
+    }
+    out
 }
 
 #' Print the summary of the hitype_result object
@@ -112,6 +118,7 @@ summary.hitype_result <- function(
 #'  or a single numeric value to be used for all levels
 #'  It can also be a function that takes the levels as input and returns a
 #'  numeric vectors as the weights.
+#' @param make_unique Whether to make the cell type names unique
 #' @param ... Additional arguments to pass to \code{\link{print}}
 #'
 #' @return The summary of the hitype_result object
@@ -121,10 +128,16 @@ print.hitype_result <- function(
     hitype_res,
     top = 1,
     level_weights = function(l) 1 / (2 ^ (l - 1)),
+    make_unique = FALSE,
     ...
 ) {
     # nocov start
-    x <- summary(hitype_res, top = top, level_weights = level_weights)
+    x <- summary(
+        hitype_res,
+        top = top,
+        level_weights = level_weights,
+        make_unique = make_unique
+    )
     print(x, ...)
     invisible(x)
     # nocov end

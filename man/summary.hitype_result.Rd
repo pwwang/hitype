@@ -4,7 +4,12 @@
 \alias{summary.hitype_result}
 \title{Summarize the hitype_result object}
 \usage{
-\method{summary}{hitype_result}(hitype_res, top = 1, level_weights = function(l) 1/(2^(l - 1)))
+\method{summary}{hitype_result}(
+  hitype_res,
+  top = 1,
+  level_weights = function(l) 1/(2^(l - 1)),
+  make_unique = FALSE
+)
 }
 \arguments{
 \item{top}{The top assigned cell types to return for each cluster}
@@ -15,6 +20,8 @@ It should be either a numeric vector of length equal to the number of levels
 or a single numeric value to be used for all levels
 It can also be a function that takes the levels as input and returns a
 numeric vectors as the weights.}
+
+\item{make_unique}{Whether to make the cell type names unique}
 }
 \value{
 The summary of the hitype_result object
