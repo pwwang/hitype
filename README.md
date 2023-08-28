@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# hitype
+# hitype <a href="https://pwwang.github.io/hitype/"><img src="man/figures/logo.png" align="right" height="139" alt="hitype website" /></a>
 
 <!-- badges: start -->
 <!-- badges: end -->
@@ -90,7 +90,7 @@ style="width:75.0%" alt="Seurat manual marked cell types" />
 See also
 <https://satijalab.org/seurat/articles/pbmc3k_tutorial.html#assigning-cell-type-identity-to-clusters>
 
-### Use as a standalone function
+### Use as standalone functions
 
 ``` r
 scores <- hitype_score(pbmc@assays$RNA@scale.data, gs, scaled = TRUE)
