@@ -68,6 +68,7 @@
 <span>  fallback <span class="op">=</span> <span class="st">"Unknown"</span>,</span>
 <span>  threshold <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>  level_weights <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">l</span><span class="op">)</span> <span class="fl">1</span><span class="op">/</span><span class="op">(</span><span class="fl">10</span><span class="op">^</span><span class="op">(</span><span class="va">l</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  make_unique <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  slot <span class="op">=</span> <span class="st">"data"</span>,</span>
 <span>  assay <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  scaled <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -103,6 +104,10 @@ It should be either a numeric vector of length equal to the number of levels
 or a single numeric value to be used for all levels
 It can also be a function that takes the levels as input and returns a
 numeric vectors as the weights.</p></dd>
+
+
+<dt>make_unique</dt>
+<dd><p>Whether to make the cell type names unique</p></dd>
 
 
 <dt>slot</dt>
