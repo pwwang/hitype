@@ -14,7 +14,7 @@ Imports:
     scales,
     Seurat,
     openxlsx,
-    keras (>= 2.13.0),
+    keras (>= 2.11.0),
     HGNChelper
 Remotes:
     pwwang/innsight
