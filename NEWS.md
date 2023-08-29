@@ -1,3 +1,7 @@
+## Version 0.0.3
+
+- Move keras and innsight as suggested
+
 ## Version 0.0.2
 
 - Add logo
