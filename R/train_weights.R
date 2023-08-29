@@ -4,9 +4,6 @@
 #' @importFrom dplyr group_by
 #' @importFrom dplyr summarise
 #' @importFrom dplyr mutate
-#' @import keras
-#' @importFrom innsight Converter
-#' @importFrom innsight LRP
 #'
 #' @param path_to_gs Path to the gene set file without weights
 #' @param exprs The expression matrix, or a seurat object
@@ -65,24 +62,24 @@ train_weights <- function(
         data$z <- data$z[rest_idx, , drop = FALSE]
         clusters <- clusters[rest_idx]
     }
-    model <- keras_model_sequential() %>%
-        layer_masking(mask_value = 0, input_shape = ncol(data$z)) %>%
-        layer_dense(
+    model <- keras::keras_model_sequential() %>%
+        keras::layer_masking(mask_value = 0, input_shape = ncol(data$z)) %>%
+        keras::layer_dense(
             units = 64, activation = "relu", input_shape = ncol(data$z)
         ) %>%
-        layer_dropout(rate = 0.2) %>%
-        layer_dense(units = 64, activation = "relu") %>%
-        layer_dropout(rate = 0.2) %>%
-        layer_dense(units = length(uclusters), activation = "softmax")
+        keras::layer_dropout(rate = 0.2) %>%
+        keras::layer_dense(units = 64, activation = "relu") %>%
+        keras::layer_dropout(rate = 0.2) %>%
+        keras::layer_dense(units = length(uclusters), activation = "softmax")
 
-    model %>% compile(
+    model %>% keras::compile(
         loss = "categorical_crossentropy",
         optimizer = "adam",
         metrics = c("accuracy")
     )
-    model %>% fit(
+    model %>% keras::fit(
         x = data$z,
-        y = to_categorical(clusters - 1, num_classes = length(uclusters)),
+        y = keras::to_categorical(clusters - 1, num_classes = length(uclusters)),
         epochs = epochs,
         batch_size = batch_size,
         validation_split = data_split[2] / (data_split[1] + data_split[2]),
@@ -91,11 +88,11 @@ train_weights <- function(
 
     if (!is.null(test_data_x)) {
         cat("Evaluating on test data\n")
-        test_data_y <- to_categorical(
+        test_data_y <- keras::to_categorical(
             test_data_y - 1,
             num_classes = length(uclusters)
         )
-        model %>% evaluate(
+        model %>% keras::evaluate(
             x = test_data_x,
             y = test_data_y,
             batch_size = batch_size,
@@ -103,12 +100,12 @@ train_weights <- function(
         )
     }
 
-    convt <- Converter$new(
+    convt <- innsight::Converter$new(
         model,
         input_names = colnames(data$z),
         output_names = unique(data$clusters)
     )
-    method <- LRP$new(convt, data$z)
+    method <- innsight::LRP$new(convt, data$z)
     result <- method$get_result(type = "data.frame")
 
     weights <- compile_weights(result, data$gs, level, range)

@@ -14,6 +14,16 @@ knitr::opts_chunk$set(
 )
 ```
 
+You need to install the suggested packages for this vignette:
+
+```{r, eval = FALSE}
+install.packages("keras")
+devtools::install_github("pwwang/hitype")
+
+keras::install_keras()
+torch::install_torch()
+```
+
 To train the weights for the markers, firstly, we have to have the markers in the original `ScType` format:
 
 ```{r}
