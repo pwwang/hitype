@@ -38,6 +38,12 @@
 #'   then all cell types in the marker gene database file will be used for
 #'   annotation.
 #'
+#' @param weight_encoding How to encoding the weights. By default, plus (+) for a
+#'   positive weight; minus (-) for a negative weight and a star (*) for zero weight.
+#'   No sign indicates 1. One plus indicates 2, etc. You can use a function to encode
+#'   these values. For example `function(x) x*x` to make the weights squared before
+#'   they are involved in the computation.
+#'
 #' @examples
 #' # nextLevels example
 #' # If we have the following cell types:
@@ -79,7 +85,7 @@
 #'   )
 #' ```
 #' @export
-gs_prepare <- function(path_to_db_file, tissue_type = NULL) {
+gs_prepare <- function(path_to_db_file, tissue_type = NULL, weight_encoding = function(x) x) {
     if (is.data.frame(path_to_db_file)) {
         cell_markers <- path_to_db_file
     } else {
@@ -159,6 +165,7 @@ gs_prepare <- function(path_to_db_file, tissue_type = NULL) {
                     }))
                     genes <- c(genes, markers2)
                     weights <- c(weights, rep(-1, length(markers2)))
+                    weights <- weight_encoding(weights)
                     list(markers = genes, weights = unname(weights))
                 }
             )

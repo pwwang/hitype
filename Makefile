@@ -6,4 +6,7 @@ readme:
 docs:
 	Rscript <(echo "devtools::document(); pkgdown::build_site()")
 
-.PHONY: readme docs
+test:
+	Rscript <(echo "devtools::test()")
+
+.PHONY: readme docs test
