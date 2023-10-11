@@ -1,3 +1,7 @@
+## Version 0.0.4
+
+- ✨ Add weight_encoding argument to gs_prepare
+
 ## Version 0.0.3
 
 - Move keras and innsight as suggested
