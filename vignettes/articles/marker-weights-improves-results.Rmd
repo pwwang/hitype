@@ -76,11 +76,12 @@ out
 
 Use unweighted markers on `ifnb` dataset:
 
-```{r}
+```{r, eval=requireNamespace("ifnb.SeuratData", quietly = TRUE)}
 suppressPackageStartupMessages(library(Seurat))
 suppressPackageStartupMessages(library(dplyr))
 
 ifnb <- ifnb.SeuratData::ifnb
+ifnb <- Seurat::UpdateSeuratObject(ifnb)
 
 # Keep only the cells that exist in the pbmc dataset
 ifnb <- subset(ifnb, subset = seurat_annotations %in% c(
@@ -113,7 +114,7 @@ summary(assigned)
 
 Use trained weights on `ifnb` dataset:
 
-```{r}
+```{r, eval=requireNamespace("ifnb.SeuratData", quietly = TRUE)}
 gs <- gs_prepare(hitypedb_pbmc3k)
 
 scores <- hitype_score(ifnb@assays$RNA@data, gs)

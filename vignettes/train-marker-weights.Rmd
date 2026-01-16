@@ -61,7 +61,7 @@ names(new_cluster_ids) <- levels(pbmc)
 pbmc <- Seurat::RenameIdents(pbmc, new_cluster_ids)
 ```
 
-```{r}
+```{r, eval=requireNamespace("keras", quietly = TRUE)}
 library(hitype)
 
 weights <- train_weights(path_to_gs = markers, exprs = pbmc)
@@ -70,7 +70,7 @@ weights
 
 Use the trained weights on `ifnb` dataset:
 
-```{r}
+```{r, eval=requireNamespace("ifnb.SeuratData", quietly = TRUE)}
 suppressPackageStartupMessages(library(Seurat))
 suppressPackageStartupMessages(library(dplyr))
 
