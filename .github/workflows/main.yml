@@ -59,31 +59,31 @@ jobs:
           devtools::install_github("pwwang/innsight")
           devtools::install_local(force = TRUE)
           SeuratData::InstallData("pbmc3k")
-          SeuratData::InstallData("ifnb")
+          # SeuratData::InstallData("ifnb")
 
-      - name: Restore cached virtual environment
-        uses: actions/cache@v3
-        id: cache-virtualenv
-        with:
-          path: /home/runner/.virtualenvs
-          key: R-${{matrix.r}}-tensorflow-${{matrix.tf}}
+      # - name: Restore cached virtual environment
+      #   uses: actions/cache@v3
+      #   id: cache-virtualenv
+      #   with:
+      #     path: /home/runner/.virtualenvs
+      #     key: R-${{matrix.r}}-tensorflow-${{matrix.tf}}
 
-      - name: Install Tensorflow + Keras deps
-        if: steps.cache-virtualenv.outputs.cache-hit != 'true'
-        run: |
-          keras::install_keras(tensorflow = '${{ matrix.tf }}-cpu')
+      # - name: Install Tensorflow + Keras deps
+      #   if: steps.cache-virtualenv.outputs.cache-hit != 'true'
+      #   run: |
+      #     keras::install_keras(tensorflow = '${{ matrix.tf }}-cpu')
 
-      - name: Restore cached torch dependencies
-        uses: actions/cache@v3
-        id: cache-torch
-        with:
-          path: /opt/R/4.2.0/lib/R/library/torch
-          key: R-${{matrix.r}}-torch
+      # - name: Restore cached torch dependencies
+      #   uses: actions/cache@v3
+      #   id: cache-torch
+      #   with:
+      #     path: /opt/R/4.2.0/lib/R/library/torch
+      #     key: R-${{matrix.r}}-torch
 
-      - name: Download torch for r-torch
-        if: steps.cache-torch.outputs.cache-hit != 'true'
-        run: |
-          torch::install_torch()
+      # - name: Download torch for r-torch
+      #   if: steps.cache-torch.outputs.cache-hit != 'true'
+      #   run: |
+      #     torch::install_torch()
 
       - name: Run tests
         run: |
