@@ -1,6 +1,6 @@
 Package: hitype
 Title: Hierarchical and high-resolution cell-type identification for single-cell RNA-seq data based on ScType.
-Version: 0.0.4
+Version: 0.0.5
 Authors@R:
     person("Panwen", "Wang", , "pwwang@pwwang.com", role = c("aut", "cre"),
            comment = c(ORCID = "YOUR-ORCID-ID"))
