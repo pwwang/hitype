@@ -1,6 +1,7 @@
+skip_if_not_installed("keras")
 test_that("train_weights() works", {
     path_to_gs <- data.frame(
-        cellName <- c(
+        cellName = c(
             "Naive CD4+ T",
             "CD14+ Mono",
             "Memory CD4+",
@@ -11,7 +12,7 @@ test_that("train_weights() works", {
             "DC",
             "Platelet"
         ),
-        geneSymbolmore1 <- c(
+        geneSymbolmore1 = c(
             "IL7R,CCR7",
             "CD14,LYZ",
             "IL7R,S100A4",
@@ -22,7 +23,7 @@ test_that("train_weights() works", {
             "FCER1A,CST3",
             "PPBP"
         ),
-        geneSymbolmore2 <- rep("", 9)
+        geneSymbolmore2 = rep("", 9)
     )
 
     suppressWarnings(SeuratData::InstallData("pbmc3k"))
@@ -31,6 +32,7 @@ test_that("train_weights() works", {
         pbmc <- readRDS(pbmc_rds)
     } else {
         pbmc <- pbmc3k.SeuratData::pbmc3k
+        pbmc <- Seurat::UpdateSeuratObject(pbmc)
         pbmc[["percent.mt"]] <- Seurat::PercentageFeatureSet(pbmc, pattern = "^MT-")
         pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
         pbmc <- Seurat::NormalizeData(pbmc)
