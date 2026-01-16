@@ -4,7 +4,11 @@
 \alias{gs_prepare}
 \title{Prepare gene sets for hitype}
 \usage{
-gs_prepare(path_to_db_file, tissue_type = NULL)
+gs_prepare(
+  path_to_db_file,
+  tissue_type = NULL,
+  weight_encoding = function(x) x
+)
 }
 \arguments{
 \item{path_to_db_file}{A data frame with markers or
@@ -42,6 +46,12 @@ If \code{tissue_type} is specified, then only the cell types in the specified
 tissue type will be used for annotation. If \code{tissue_type} is not specified,
 then all cell types in the marker gene database file will be used for
 annotation.}
+
+\item{weight_encoding}{How to encoding the weights. By default, plus (+) for a
+positive weight; minus (-) for a negative weight and a star (*) for zero weight.
+No sign indicates 1. One plus indicates 2, etc. You can use a function to encode
+these values. For example \code{function(x) x*x} to make the weights squared before
+they are involved in the computation.}
 }
 \value{
 A list with gene_sets and next_levels. The structure looks like:

@@ -19,7 +19,7 @@
 #'  It can also be a function that takes the levels as input and returns a
 #'  numeric vectors as the weights.
 #' @param make_unique Whether to make the cell type names unique
-#' @param slot The slot to use for `GetAssayData`
+#' @param layer The layer to use for `GetAssayData`
 #' @param assay The assay to use for `GetAssayData`
 #' @param scaled Whether the data from `GetAssayData` is scaled
 #' @return The Seurat object with the cell types (named `hitype`) added to the
@@ -44,13 +44,13 @@ RunHitype.Seurat <- function(
     threshold = 0.05,
     level_weights = function(l) 1 / (10 ^ (l - 1)),
     make_unique = FALSE,
-    slot = "data",
+    layer = "data",
     assay = NULL,
     scaled = FALSE,
     ...
 ) {
     scores <- hitype_score(
-        Seurat::GetAssayData(object, slot = slot, assay = assay),
+        Seurat::GetAssayData(object, layer = layer, assay = assay),
         gs = gs,
         scaled = scaled
     )

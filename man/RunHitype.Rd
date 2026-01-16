@@ -17,7 +17,7 @@ RunHitype(object, ...)
   threshold = 0.05,
   level_weights = function(l) 1/(10^(l - 1)),
   make_unique = FALSE,
-  slot = "data",
+  layer = "data",
   assay = NULL,
   scaled = FALSE,
   ...
@@ -44,7 +44,7 @@ numeric vectors as the weights.}
 
 \item{make_unique}{Whether to make the cell type names unique}
 
-\item{slot}{The slot to use for \code{GetAssayData}}
+\item{layer}{The layer to use for \code{GetAssayData}}
 
 \item{assay}{The assay to use for \code{GetAssayData}}
 
