@@ -129,6 +129,12 @@ hitype_score <- function(exprs, gs, scaled = FALSE, norm = "sqrt",
     } else {
         z <- t(scale(t(exprs)))
     }
+    # Genes with zero variance across the given cells (e.g. unexpressed in
+    # a small held-out subset) become all-NA rows after scaling. They carry
+    # no signal, but NA propagates: one such gene shared by several gene
+    # sets makes every score of every sharing cell type NA, which can
+    # collapse the whole score matrix to zero rows. Score them as 0.
+    z[is.na(z)] <- 0
 
     lapply(
         gs,

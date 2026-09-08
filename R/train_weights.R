@@ -599,7 +599,14 @@ run_weights_on_test_data <- function(
     db$level <- NULL
     gs <- gs_prepare(db)
     scores <- hitype_score(
-        exprs[, test_data_idx, drop = FALSE], gs, scaled = scaled
+        exprs[, test_data_idx, drop = FALSE],
+        gs,
+        scaled = scaled,
+        # Scoring with learned weights: marker sensitivity double-penalizes
+        # shared markers (see hitype_score()). When every cell type shares
+        # the same pooled marker set, all sensitivities are 0 and the whole
+        # score matrix is zero, making this on-test assignment meaningless.
+        use_sensitivity = FALSE
     )
     types <- hitype_assign(
         clusters[test_data_idx],
@@ -750,7 +757,34 @@ prepare_data_for_training <- function(
     } else {
         exprs <- t(exprs)
     }
-    if (!scaled) { exprs <- scale(exprs) }
+    if (!scaled) {
+        exprs <- scale(exprs)
+        # Genes with no variance across the cells (e.g. unexpressed) become
+        # all-NA columns after scaling. They carry no signal for training,
+        # yet make every model fit fail with "x has missing values" —
+        # silently, when the fits are wrapped in tryCatch (all-zero
+        # coefficients -> the rescale midpoint as weights). Drop them from
+        # the matrix and the gene sets so they never reach the model or the
+        # compiled weights.
+        zero_var <- Matrix::colSums(is.na(exprs)) > 0
+        if (any(zero_var)) {
+            dropped <- colnames(exprs)[zero_var]
+            warning(
+                paste0(
+                    "The following markers have no variance across the ",
+                    "cells and are dropped: ",
+                    paste(dropped, collapse = ", ")
+                ),
+                immediate. = TRUE
+            )
+            exprs <- exprs[, !zero_var, drop = FALSE]
+            for (ct in names(gs)) {
+                gs[[ct]]$markers <- intersect(
+                    gs[[ct]]$markers, colnames(exprs)
+                )
+            }
+        }
+    }
 
     list(gs = gs, z = exprs, clusters = clusters)
 }

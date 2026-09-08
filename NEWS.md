@@ -1,3 +1,28 @@
+## Version 0.0.8
+
+- 🐛 Fix `train_weights()` silently returning the rescale midpoint as all
+  weights when a marker gene has no variance across the cells (e.g. an
+  unexpressed gene that still exists in the expression matrix): after
+  scaling, its column is all-NA, every supervised fit fails with
+  "x has missing values", and each `tryCatch`-wrapped fit is silently
+  swallowed (all-zero coefficients -> uniform midpoint weights, e.g. `3`
+  for `range = c(1, 5)`). `prepare_data_for_training()` now drops
+  zero-variance markers (with a warning) from both the training matrix and
+  the gene sets, so they never reach the model or the compiled weights.
+- 🐛 Fix `hitype_score()` collapsing to a zero-row score matrix when a
+  marker gene has no variance across the given (e.g. small held-out test)
+  cells: its scaled row is all-NA, NA propagates to every cell type
+  sharing the marker, all-NA rows are removed, and downstream
+  `hitype_assign()` crashes with "arguments imply differing number of
+  rows". Zero-variance genes now score as 0.
+- 🐛 Fix the on-test assignment printed by `train_weights()` (with
+  `run_weights_on_test`) being all-zero when every cell type shares the
+  same marker pool: the scores were computed with the default
+  `use_sensitivity = TRUE`, and markers present in every gene set get a
+  sensitivity of 0, zeroing the whole score matrix. On-test scoring now
+  uses `use_sensitivity = FALSE` (as recommended for scoring with learned
+  weights, per `hitype_score()`).
+
 ## Version 0.0.7
 
 - ✨ `train_weights()` now derives the training cell types from the data
