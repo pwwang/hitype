@@ -26,7 +26,12 @@
 #'  `Seurat::Idents()`, or a column name in the `meta.data` of the Seurat
 #'  object that holds the cell type of each cell. When `exprs` is a matrix,
 #'  it should be a named vector of cell types (names - cell names).
-#' @param range The range of the weights
+#' @param range The quantization range for the db output only (`format =
+#'  "db"`): the 4-element form `c(-low, -high, low, high)` (default
+#'  `c(-5, -1, 1, 5)`) scales the positive weights into `[low, high]` and
+#'  the negative ones into `[-high, -low]` before rounding them to
+#'  integers, so genuinely positive markers always stay positive. The
+#'  universal output (default) keeps the raw trained weights as-is.
 #' @param data_split A vector of fractions for training, validation and
 #'  testing. If only two fractions are provided, no testing set will be used.
 #' @param epochs The number of epochs to train (lrp method only)
@@ -55,6 +60,13 @@
 #'  }
 #' @param format The format of the output data frame. One of
 #'   `"universal"` (default) or `"db"` (the hitype/ScType wide format).
+#' @param drop_zero Whether to drop markers whose trained weight is exactly
+#'   zero from the output (default `TRUE`). Such markers carry no learned
+#'   direction — with the glmnet method (coefficients at `lambda.1se`) most
+#'   candidate markers are zeroed. Dropping them makes zero mean "no
+#'   direction": the marker is absent from the cell type's list. Pass
+#'   `FALSE` to keep every candidate marker (with `format = "db"` they are
+#'   then encoded as `*`).
 #' @param seed Random seed for reproducibility
 #' @return A data frame with the weights in the universal marker format
 #'  (default) or the db format (`format = "db"`), that can be used directly
@@ -67,7 +79,7 @@ train_weights <- function(
     level = 1,
     scaled = FALSE,
     clusters = NULL,
-    range = c(1, 5),
+    range = c(-5, -1, 1, 5),
     data_split = c(0.7, 0.2, 0.1),
     epochs = 20,
     batch_size = 32,
@@ -75,6 +87,7 @@ train_weights <- function(
     cv_folds = 1,
     method = c("glmnet", "lr", "rf", "xgb", "lrp", "correlation", "uniform"),
     format = c("universal", "db"),
+    drop_zero = TRUE,
     seed = 8525
 ) {
     method <- match.arg(method)
@@ -126,7 +139,7 @@ train_weights <- function(
         )
     )
 
-    weights <- compile_weights(result, data$gs, level, range, format)
+    weights <- compile_weights(result, data$gs, level, range, format, drop_zero)
     if (!is.null(test_data_x) && run_weights_on_test) {
         run_weights_on_test_data(
             weights, exprs, clusters, scaled, rownames(test_data_x)
@@ -796,55 +809,94 @@ prepare_data_for_training <- function(
 #' @param weights A data frame with the weights
 #' @param gs The gene sets
 #' @param level The level of the gene sets
-#' @param range The range of the weights
+#' @param range The quantization range for `format = "db"` only: the
+#'   4-element form `c(-low, -high, low, high)` (default `c(-5, -1, 1, 5)`)
+#'   scales the positive weights into `[low, high]` and the negative ones
+#'   into `[-high, -low]` before rounding them to integers (the db format
+#'   can only encode integer weights via `+`/`-` repeats). The universal
+#'   output is never rescaled — it keeps the raw trained weights.
 #' @param format The format of the output data frame. One of
 #'   `"universal"` (default) or `"db"`.
+#' @param drop_zero Whether to drop markers whose trained weight is exactly
+#'   zero from the output (default `TRUE`). Zero weights mean the marker
+#'   carries no learned direction for the cell type; dropping them (before
+#'   any db quantization) makes zero mean "no direction" — the marker is
+#'   absent from the cell type's list. Pass `FALSE` to keep every candidate
+#'   marker.
 #'
 #' @return A data frame with the compiled weights in the universal marker
 #'   format (default) or the db format (`format = "db"`), consumable by
 #'   [gs_prepare()].
-compile_weights <- function(weights, gs, level, range, format = c("universal", "db")) {
+compile_weights <- function(
+    weights, gs, level, range = c(-5, -1, 1, 5),
+    format = c("universal", "db"), drop_zero = TRUE
+) {
     format <- match.arg(format)
-    if (any(diff(range) < 0)) {
-        stop("range must be increasing")
-    }
-    if (!length(range) %in% c(2, 4)) {
-        stop("range must be of length 2 or 4")
-    }
-    if (length(range) == 4) {
-        if (range[2] > 0 || range[3] < 0) {
-            stop("range must be of the form c(-low, -high, low, high)")
+    if (format == "universal") {
+        if (!identical(range, c(-5, -1, 1, 5))) {
+            warning(
+                "`range` only applies when `format = \"db\"`; the universal ",
+                "output keeps the raw trained weights as-is."
+            )
+        }
+    } else {
+        if (
+            length(range) != 4 || any(diff(range) < 0) ||
+            range[2] > 0 || range[3] < 0
+        ) {
+            stop(
+                "With `format = \"db\"`, `range` must have the 4-element ",
+                "form c(-low, -high, low, high) (e.g. c(-5, -1, 1, 5)) so ",
+                "that positive weights always rescale into the positive ",
+                "band and negative ones into the negative band. A 2-element ",
+                "range like c(-5, 5) would turn genuinely positive markers ",
+                "negative."
+            )
         }
     }
     weights <- weights %>%
         group_by(output_node, feature) %>%
         summarise(weight = mean(value), .groups = "drop")
-    if (length(range) == 2) {
-        weights <- weights %>%
-            mutate(weight = scales::rescale(weight, to = range))
-    } else {
-        weights$weight[weights$weight > 0] <- scales::rescale(
-            weights$weight[weights$weight > 0],
-            to = range[3:4]
-        )
-        weights$weight[weights$weight < 0] <- scales::rescale(
-            weights$weight[weights$weight < 0],
-            to = range[1:2]
-        )
+    if (drop_zero) {
+        # zero = no direction: drop exactly-zero weights (before any db
+        # quantization) so a marker in the output is either positive or
+        # negative
+        weights <- weights[weights$weight != 0, , drop = FALSE]
     }
 
     if (format == "universal") {
+        # Raw weights: no rescaling, the trained coefficients are the
+        # weights. gs_prepare() turns (direction, abs(weight)) back into
+        # the signed coefficient, which is what hitype_score() consumes.
         parts <- lapply(names(gs), function(x) {
             markers <- explode(gs[[x]]$markers)
             w <- weights$weight[weights$output_node == x]
             names(w) <- weights$feature[weights$output_node == x]
-            v <- rep(1, length(markers))
-            hit <- markers %in% names(w)
-            v[hit] <- unname(w[markers[hit]])
+            # name-aligned lookup: markers without a trained weight give NA
+            v <- unname(w[markers])
+            if (drop_zero) {
+                # markers with zero (or no) trained weight have no direction:
+                # drop them so absence in the list means "no direction"
+                keep <- !is.na(v)
+                markers <- markers[keep]
+                v <- v[keep]
+                if (length(markers) == 0) {
+                    warning(
+                        paste0(
+                            "All markers of cell type '", x, "' have zero or ",
+                            "missing trained weights; the cell type is ",
+                            "dropped from the output"
+                        ),
+                        immediate. = TRUE
+                    )
+                }
+            } else {
+                v[is.na(v)] <- 1
+            }
             data.frame(
                 cell_type = x,
                 gene = markers,
-                direction = ifelse(v >= 0, "positive", "negative"),
+                direction = ifelse(v < 0, "negative", "positive"),
                 weight = abs(v),
                 level = as.integer(level),
                 stringsAsFactors = FALSE
@@ -853,6 +905,23 @@ compile_weights <- function(weights, gs, level, range, format = c("universal", "
         return(do.call(rbind, parts))
     }
 
+    # db format: quantize the raw weights into the signed integer bands of
+    # `range`, then sign-encode them so they round-trip exactly through
+    # gs_prepare()'s decoder (bare gene = 1, "+" x n = n + 1, "-" x n = -n,
+    # "*" = 0). A slice with a single distinct value (or none) carries no
+    # relative information; put it at the band midpoint.
+    pos <- weights$weight > 0
+    neg <- weights$weight < 0
+    quantize_band <- function(v, to) {
+        if (length(v) == 0 || length(unique(v)) < 2) {
+            rep(round(mean(to)), length(v))
+        } else {
+            round(scales::rescale(v, to = to))
+        }
+    }
+    weights$weight[pos] <- quantize_band(weights$weight[pos], range[3:4])
+    weights$weight[neg] <- quantize_band(weights$weight[neg], range[1:2])
+
     db <- data.frame(
         cellName = names(gs),
         level = level,
@@ -860,22 +929,37 @@ compile_weights <- function(weights, gs, level, range, format = c("universal", "
     )
     db$geneSymbolmore1 <- unlist(lapply(names(gs), function(x) {
         markers <- explode(gs[[x]]$markers)
-        weight <- weights[
-            weights$output_node == x & weights$feature %in% markers,
-            "weight",
-            drop = TRUE
-        ]
-        if (length(weight) == 0) weight <- rep(1, length(markers))
-        markers <- sapply(seq_along(markers), function(i) {
-            if (weight[i] > 0) {
-                sign <- "+"
-            } else if (weight[i] < 0) {
-                sign <- "-"
-            } else {
-                sign <- "*"
-                weight[i] <- 1
+        w <- weights$weight[weights$output_node == x]
+        names(w) <- weights$feature[weights$output_node == x]
+        # name-aligned lookup, same semantics as the universal branch
+        weight <- unname(w[markers])
+        if (drop_zero) {
+            keep <- !is.na(weight)
+            markers <- markers[keep]
+            weight <- weight[keep]
+            if (length(markers) == 0) {
+                warning(
+                    paste0(
+                        "All markers of cell type '", x, "' have zero or ",
+                        "missing trained weights; the cell type is ",
+                        "dropped from the output"
+                    ),
+                    immediate. = TRUE
+                )
             }
-            suffix <- paste0(rep(sign, abs(weight[i])), collapse = "")
+        } else {
+            weight[is.na(weight)] <- 1
+        }
+        markers <- sapply(seq_along(markers), function(i) {
+            wi <- weight[i]
+            if (wi > 0) {
+                # "+" x (w - 1): the decoder adds 1 to the repeat count
+                suffix <- paste0(rep("+", wi - 1), collapse = "")
+            } else if (wi < 0) {
+                suffix <- paste0(rep("-", -wi), collapse = "")
+            } else {
+                suffix <- "*"
+            }
             paste0(markers[i], suffix, collapse = "")
         })
         paste0(markers, collapse = ",")

@@ -22,6 +22,25 @@
   sensitivity of 0, zeroing the whole score matrix. On-test scoring now
   uses `use_sensitivity = FALSE` (as recommended for scoring with learned
   weights, per `hitype_score()`).
+- ✨ `compile_weights()` drops exactly-zero trained weights from the output
+  by default (`drop_zero = TRUE`, new argument on `train_weights()`), so
+  zero means "no direction": markers the penalty zeroed out are absent from
+  the cell type's list. Pass `drop_zero = FALSE` to keep every candidate
+  marker (with `format = "db"` they are then encoded as `*`).
+- ✨ The universal output of `train_weights()`/`compile_weights()` (the
+  default `format`) now keeps the raw trained weights as-is instead of
+  range-rescaling them. The rescale was pure distortion — it erased the
+  sign of genuinely negative markers under a positive-only range like
+  `c(1, 5)` and injected a per-cell-type offset proportional to marker
+  count — and `hitype_score()` consumes only signed raw weights anyway.
+  `range` now applies to `format = "db"` only: it must be the 4-element
+  sign-split form `c(-low, -high, low, high)` (default `c(-5, -1, 1, 5)`),
+  which scales positive weights into `[low, high]` and negative ones into
+  `[-high, -low]` before rounding, so all-positive training data cannot
+  produce negative db markers. The db weights are integer-encoded so they
+  round-trip exactly through `gs_prepare()`: a weight of `w` markers as
+  `gene` + `"+"` × (`w` − 1), a weight of `−w` as `gene` + `"-"` × `w`
+  (the decoder counts positive repeats from 1).
 
 ## Version 0.0.7
 

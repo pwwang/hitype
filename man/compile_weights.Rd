@@ -4,7 +4,14 @@
 \alias{compile_weights}
 \title{Compile the weights}
 \usage{
-compile_weights(weights, gs, level, range, format = c("universal", "db"))
+compile_weights(
+  weights,
+  gs,
+  level,
+  range = c(-5, -1, 1, 5),
+  format = c("universal", "db"),
+  drop_zero = TRUE
+)
 }
 \arguments{
 \item{weights}{A data frame with the weights}
@@ -13,10 +20,22 @@ compile_weights(weights, gs, level, range, format = c("universal", "db"))
 
 \item{level}{The level of the gene sets}
 
-\item{range}{The range of the weights}
+\item{range}{The quantization range for \code{format = "db"} only: the
+4-element form \code{c(-low, -high, low, high)} (default \code{c(-5, -1, 1, 5)})
+scales the positive weights into \verb{[low, high]} and the negative ones
+into \verb{[-high, -low]} before rounding them to integers (the db format
+can only encode integer weights via \code{+}/\code{-} repeats). The universal
+output is never rescaled — it keeps the raw trained weights.}
 
 \item{format}{The format of the output data frame. One of
 \code{"universal"} (default) or \code{"db"}.}
+
+\item{drop_zero}{Whether to drop markers whose trained weight is exactly
+zero from the output (default \code{TRUE}). Zero weights mean the marker
+carries no learned direction for the cell type; dropping them (before
+any db quantization) makes zero mean "no direction" — the marker is
+absent from the cell type's list. Pass \code{FALSE} to keep every candidate
+marker.}
 }
 \value{
 A data frame with the compiled weights in the universal marker

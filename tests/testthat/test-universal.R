@@ -193,7 +193,7 @@ test_that("universal marker files (.csv/.rds) are auto-detected", {
     )
 })
 
-test_that("compile_weights() universal output round-trips exact weights", {
+test_that("compile_weights() universal output keeps raw weights", {
     gs <- list(
         `CD4 T` = list(markers = c("IL7R", "CCR7", "S100A4")),
         `CD8 T` = list(markers = c("CD8A", "CD8B", "GZMB"))
@@ -207,39 +207,115 @@ test_that("compile_weights() universal output round-trips exact weights", {
             "IL7R", "CCR7", "S100A4",
             "CD8A", "CD8B", "GZMB"
         ),
-        # Span exactly the range so the rescale below is the identity
         value = c(2, -1, 0, -2, 1, 1.5)
     )
-    compiled <- compile_weights(weights, gs, level = 1, range = c(-2, 2))
+    compiled <- compile_weights(weights, gs, level = 1)
     expect_equal(
         colnames(compiled),
         c("cell_type", "gene", "direction", "weight", "level")
     )
-    expect_true(all(compiled$weight >= 0))
-    expect_equal(
-        compiled$direction[compiled$weight == 0],
-        rep("positive", sum(compiled$weight == 0))
-    )
-    # Re-decoded through gs_prepare: exact signed weights, incl. zero
+    # Raw mean weights: no rescaling, no quantization. The zero S100A4 row
+    # is dropped by default, so the CD4 T block is IL7R, CCR7.
+    expect_equal(compiled$weight, c(2, 1, 2, 1, 1.5))
+    expect_equal(compiled$direction, c("positive", "negative", "negative",
+        "positive", "positive"))
+    # Re-decoded through gs_prepare: exact signed weights
     gs2 <- gs_prepare(compiled)
     expect_null(gs2$cell_names)
-    expect_equal(
-        gs_weights(gs2, 1, "CD4 T"),
-        c(IL7R = 2, CCR7 = -1, S100A4 = 0)
-    )
+    expect_equal(gs_weights(gs2, 1, "CD4 T"), c(IL7R = 2, CCR7 = -1))
     expect_equal(
         gs_weights(gs2, 1, "CD8 T"),
         c(CD8A = -2, CD8B = 1, GZMB = 1.5)
     )
 
-    # Legacy db format is still available
-    db <- compile_weights(weights, gs, level = 1, range = c(-2, 2),
-        format = "db")
+    # drop_zero = FALSE keeps the zero marker
+    compiled0 <- compile_weights(weights, gs, level = 1, drop_zero = FALSE)
+    expect_equal(
+        gs_weights(gs_prepare(compiled0), 1, "CD4 T"),
+        c(IL7R = 2, CCR7 = -1, S100A4 = 0)
+    )
+
+    # `range` does not apply to the universal output
+    expect_warning(
+        compile_weights(weights, gs, level = 1, range = c(-2, 2)),
+        "only applies when `format = \"db\"`"
+    )
+})
+
+test_that("compile_weights() db output quantizes and round-trips exactly", {
+    gs <- list(
+        `CD4 T` = list(markers = c("IL7R", "CCR7", "S100A4")),
+        `CD8 T` = list(markers = c("CD8A", "CD8B", "GZMB"))
+    )
+    weights <- data.frame(
+        output_node = c(
+            "CD4 T", "CD4 T", "CD4 T",
+            "CD8 T", "CD8 T", "CD8 T"
+        ),
+        feature = c(
+            "IL7R", "CCR7", "S100A4",
+            "CD8A", "CD8B", "GZMB"
+        ),
+        # Positive slice {2, 1, 1.5} -> [1, 5] -> {5, 1, 3};
+        # negative slice {-1, -2} -> [-5, -1] -> {-1, -5}
+        value = c(2, -1, 0, -2, 1, 1.5)
+    )
+    db <- compile_weights(weights, gs, level = 1, format = "db")
     expect_true(all(
         c("cellName", "geneSymbolmore1", "geneSymbolmore2", "level") %in%
             colnames(db)
     ))
     expect_equal(nrow(db), 2)
+    gs2 <- gs_prepare(db)
+    expect_equal(gs_weights(gs2, 1, "CD4 T"), c(IL7R = 5, CCR7 = -1))
+    expect_equal(
+        gs_weights(gs2, 1, "CD8 T"),
+        c(CD8A = -5, CD8B = 1, GZMB = 3)
+    )
+
+    # drop_zero = FALSE: the raw-zero marker survives as `*` (weight 0)
+    db0 <- compile_weights(weights, gs, level = 1, format = "db",
+        drop_zero = FALSE)
+    expect_equal(
+        gs_weights(gs_prepare(db0), 1, "CD4 T"),
+        c(IL7R = 5, CCR7 = -1, S100A4 = 0)
+    )
+
+    # All-positive training data cannot flip markers negative (the hazard of
+    # a plain symmetric range like c(-5, 5)): the 4-element range keeps each
+    # sign slice in its own band
+    pos_weights <- weights
+    pos_weights$value <- abs(pos_weights$value)
+    dbp <- compile_weights(pos_weights, gs, level = 1, format = "db")
+    expect_true(all(gs_weights(gs_prepare(dbp), 1, "CD4 T") > 0))
+    expect_true(all(gs_weights(gs_prepare(dbp), 1, "CD8 T") > 0))
+
+    # A 2-element range would turn genuine positive markers negative;
+    # the db format rejects it
+    expect_error(
+        compile_weights(pos_weights, gs, level = 1, format = "db",
+            range = c(-5, 5)),
+        "must have the 4-element form"
+    )
+    expect_error(
+        compile_weights(weights, gs, level = 1, format = "db",
+            range = c(-1, -5, 1, 5)),
+        "must have the 4-element form"
+    )
+
+    # A sign slice with a single distinct value has no relative
+    # information: it lands at the band midpoint
+    flat_weights <- weights
+    flat_weights$value <- 0.7  # every value identical on the raw scale
+    dbf <- compile_weights(flat_weights, gs, level = 1, format = "db")
+    expect_equal(
+        gs_weights(gs_prepare(dbf), 1, "CD4 T"),
+        c(IL7R = 3, CCR7 = 3, S100A4 = 3)
+    )
+    expect_equal(
+        gs_weights(gs_prepare(dbf), 1, "CD8 T"),
+        c(CD8A = 3, CD8B = 3, GZMB = 3)
+    )
 })
 
 test_that("universal marker files (.qs/.qs2) are auto-detected", {

@@ -10,7 +10,7 @@ train_weights(
   level = 1,
   scaled = FALSE,
   clusters = NULL,
-  range = c(1, 5),
+  range = c(-5, -1, 1, 5),
   data_split = c(0.7, 0.2, 0.1),
   epochs = 20,
   batch_size = 32,
@@ -18,6 +18,7 @@ train_weights(
   cv_folds = 1,
   method = c("glmnet", "lr", "rf", "xgb", "lrp", "correlation", "uniform"),
   format = c("universal", "db"),
+  drop_zero = TRUE,
   seed = 8525
 )
 }
@@ -46,7 +47,11 @@ object, it can be \code{NULL} (default) to take the cell types from
 object that holds the cell type of each cell. When \code{exprs} is a matrix,
 it should be a named vector of cell types (names - cell names).}
 
-\item{range}{The range of the weights}
+\item{range}{The quantization range for the db output only (\code{format = "db"}): the 4-element form \code{c(-low, -high, low, high)} (default
+\code{c(-5, -1, 1, 5)}) scales the positive weights into \verb{[low, high]} and
+the negative ones into \verb{[-high, -low]} before rounding them to
+integers, so genuinely positive markers always stay positive. The
+universal output (default) keeps the raw trained weights as-is.}
 
 \item{data_split}{A vector of fractions for training, validation and
 testing. If only two fractions are provided, no testing set will be used.}
@@ -82,6 +87,14 @@ Deep learning approach. Requires the keras and innsight packages.}
 
 \item{format}{The format of the output data frame. One of
 \code{"universal"} (default) or \code{"db"} (the hitype/ScType wide format).}
+
+\item{drop_zero}{Whether to drop markers whose trained weight is exactly
+zero from the output (default \code{TRUE}). Such markers carry no learned
+direction — with the glmnet method (coefficients at \code{lambda.1se}) most
+candidate markers are zeroed. Dropping them makes zero mean "no
+direction": the marker is absent from the cell type's list. Pass
+\code{FALSE} to keep every candidate marker (with \code{format = "db"} they are
+then encoded as \code{*}).}
 
 \item{seed}{Random seed for reproducibility}
 }
