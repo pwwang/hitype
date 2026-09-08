@@ -24,7 +24,6 @@ Suggests:
     innsight,
     keras (>= 2.11.0),
     knitr,
-    pbmc3k.SeuratData,
     presto,
     ranger,
     rmarkdown,
@@ -36,3 +35,6 @@ VignetteBuilder: knitr
 URL: https://pwwang.github.io/hitype/
 Config/roxygen2/version: 8.0.0
 RoxygenNote: 7.3.3
+Remotes:
+    immunogenomics/presto,
+    SeuratData=satijalab/seurat-data
