@@ -22,7 +22,15 @@ train_weights(
 )
 }
 \arguments{
-\item{path_to_gs}{Path to the gene set file without weights}
+\item{path_to_gs}{Path to the gene set file without weights. The
+training cell types are the cell types of the cells (see \code{clusters}):
+a cell type in the marker file with cells of that type in the data is
+trained on its own markers in the file. A cell type in the marker file
+with no cells of that type in the data is ignored with a warning, and
+its markers are pooled for the cell types in the data that are not
+covered by the marker file (each of them is trained on the pooled
+markers). Cell types in the data that are neither covered by the marker
+file nor by pooled markers are not trained (with a warning).}
 
 \item{exprs}{The expression matrix, or a seurat object
 (rows: genes, columns: samples/cells)}
@@ -32,9 +40,11 @@ you have multiple levels of gene sets.}
 
 \item{scaled}{Whether the expression matrix is scaled}
 
-\item{clusters}{A named vector of cluster ids
-If \code{exprs} is a seurat object, this is ignored. The cluster ids are
-taken from the seurat object.}
+\item{clusters}{The cell types of the cells. When \code{exprs} is a Seurat
+object, it can be \code{NULL} (default) to take the cell types from
+\code{Seurat::Idents()}, or a column name in the \code{meta.data} of the Seurat
+object that holds the cell type of each cell. When \code{exprs} is a matrix,
+it should be a named vector of cell types (names - cell names).}
 
 \item{range}{The range of the weights}
 

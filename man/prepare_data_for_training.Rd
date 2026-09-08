@@ -23,9 +23,11 @@ you have multiple levels of gene sets.}
 
 \item{scaled}{Whether the expression matrix is scaled}
 
-\item{clusters}{A named vector of cluster ids
-If \code{exprs} is a seurat object, this is ignored. The cluster ids are
-taken from the seurat object.}
+\item{clusters}{The cell types of the cells. When \code{exprs} is a Seurat
+object, it can be \code{NULL} (default) to take the cell types from
+\code{Seurat::Idents()}, or a column name in the \code{meta.data} of the Seurat
+object that holds the cell type of each cell. When \code{exprs} is a matrix,
+it should be a named vector of cell types (names - cell names).}
 }
 \value{
 A list with the gene sets, the z matrix and the clusters

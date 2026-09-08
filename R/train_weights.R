@@ -7,15 +7,25 @@
 #' @importFrom stats median
 #' @importFrom stats na.omit
 #'
-#' @param path_to_gs Path to the gene set file without weights
+#' @param path_to_gs Path to the gene set file without weights. The
+#'  training cell types are the cell types of the cells (see `clusters`):
+#'  a cell type in the marker file with cells of that type in the data is
+#'  trained on its own markers in the file. A cell type in the marker file
+#'  with no cells of that type in the data is ignored with a warning, and
+#'  its markers are pooled for the cell types in the data that are not
+#'  covered by the marker file (each of them is trained on the pooled
+#'  markers). Cell types in the data that are neither covered by the marker
+#'  file nor by pooled markers are not trained (with a warning).
 #' @param exprs The expression matrix, or a seurat object
 #'  (rows: genes, columns: samples/cells)
 #' @param level The level of the gene sets to train weights for if
 #'  you have multiple levels of gene sets.
 #' @param scaled Whether the expression matrix is scaled
-#' @param clusters A named vector of cluster ids
-#'  If `exprs` is a seurat object, this is ignored. The cluster ids are
-#'  taken from the seurat object.
+#' @param clusters The cell types of the cells. When `exprs` is a Seurat
+#'  object, it can be `NULL` (default) to take the cell types from
+#'  `Seurat::Idents()`, or a column name in the `meta.data` of the Seurat
+#'  object that holds the cell type of each cell. When `exprs` is a matrix,
+#'  it should be a named vector of cell types (names - cell names).
 #' @param range The range of the weights
 #' @param data_split A vector of fractions for training, validation and
 #'  testing. If only two fractions are provided, no testing set will be used.
@@ -612,9 +622,11 @@ run_weights_on_test_data <- function(
 #' @param level The level of the gene sets to train weights for if
 #'  you have multiple levels of gene sets.
 #' @param scaled Whether the expression matrix is scaled
-#' @param clusters A named vector of cluster ids
-#'  If `exprs` is a seurat object, this is ignored. The cluster ids are
-#'  taken from the seurat object.
+#' @param clusters The cell types of the cells. When `exprs` is a Seurat
+#'  object, it can be `NULL` (default) to take the cell types from
+#'  `Seurat::Idents()`, or a column name in the `meta.data` of the Seurat
+#'  object that holds the cell type of each cell. When `exprs` is a matrix,
+#'  it should be a named vector of cell types (names - cell names).
 #'
 #' @return A list with the gene sets, the z matrix and the clusters
 prepare_data_for_training <- function(
@@ -625,7 +637,33 @@ prepare_data_for_training <- function(
     clusters = NULL
 ) {
     if ("Seurat" %in% class(exprs)) {
-        clusters <- Idents(exprs)
+        if (is.null(clusters)) {
+            clusters <- Idents(exprs)
+        } else if (is.character(clusters) && length(clusters) == 1) {
+            if (!clusters %in% colnames(exprs@meta.data)) {
+                stop(
+                    paste0(
+                        "The column `", clusters,
+                        "` does not exist in the `meta.data` of the ",
+                        "Seurat object. Give a column name that holds the ",
+                        "cell type of each cell, or `NULL` to use ",
+                        "`Seurat::Idents()`."
+                    )
+                )
+            }
+            # Named by the cells, like `Idents()`
+            clusters <- exprs@meta.data[[clusters]]
+            names(clusters) <- rownames(exprs@meta.data)
+        } else {
+            stop(
+                paste0(
+                    "When `exprs` is a Seurat object, `clusters` should be ",
+                    "`NULL` (use `Seurat::Idents()`) or a single column ",
+                    "name in the `meta.data` that holds the cell type of ",
+                    "each cell."
+                )
+            )
+        }
         exprs <- Seurat::GetAssayData(exprs, layer = "data")
         scaled <- FALSE
     }
@@ -635,15 +673,59 @@ prepare_data_for_training <- function(
     }
 
     gs <- gs_prepare(path_to_gs)$gene_sets[[level]]
-    non_exist_clusters <- setdiff(names(gs), unique(clusters))
-    if (length(non_exist_clusters) > 0) {
-        stop(
-            paste(
-                "The following clusters do not exist in the expression matrix:",
-                paste(non_exist_clusters, collapse = ", ")
-            )
+    cell_types <- unique(as.character(clusters))
+    file_types <- names(gs)
+    has_cells <- file_types %in% cell_types
+
+    # The training cell types come from the data: a cell type of the marker
+    # file with no cells of that type in the data cannot be trained. It is
+    # ignored (with a warning) and its markers are pooled for the cell types
+    # of the data that are not covered by the marker file, so that those
+    # cells are not left without markers.
+    if (any(!has_cells)) {
+        warning(
+            paste0(
+                "The following cell types in the marker file have no cells ",
+                "of that type in the data and are ignored (their markers ",
+                "are pooled for cell types not covered by the marker ",
+                "file): ",
+                paste(file_types[!has_cells], collapse = ", ")
+            ),
+            immediate. = TRUE
         )
     }
+    leftover_markers <- unique(unlist(
+        lapply(gs[!has_cells], function(x) x$markers)
+    ))
+    gs <- gs[has_cells]
+    rest <- setdiff(cell_types, file_types)
+    if (length(rest) > 0 && length(leftover_markers) > 0) {
+        pooled <- rep(
+            list(list(
+                markers = leftover_markers,
+                weights = rep(1, length(leftover_markers))
+            )),
+            length(rest)
+        )
+        names(pooled) <- rest
+        gs <- c(gs, pooled)
+    }
+    if (length(gs) == 0) {
+        stop("No markers are available for training.")
+    }
+    untrained <- setdiff(cell_types, names(gs))
+    if (length(untrained) > 0) {
+        warning(
+            paste0(
+                "The following cell types in the data are not covered by ",
+                "the marker file and no markers are left for them; they ",
+                "are not trained: ",
+                paste(untrained, collapse = ", ")
+            ),
+            immediate. = TRUE
+        )
+    }
+
     all_markers <- na.omit(unlist(lapply(gs, function(x) x$markers)))
     non_exist_markers <- setdiff(all_markers, rownames(exprs))
     if (length(non_exist_markers) > 0) {
@@ -659,11 +741,10 @@ prepare_data_for_training <- function(
     for (ct in names(gs)) {
         gs[[ct]]$markers <- intersect(gs[[ct]]$markers, all_markers)
     }
-    exprs <- exprs[
-        all_markers,
-        names(clusters[clusters %in% names(gs)]),
-        drop = FALSE
-    ]
+    # All the cells are kept in the training data; a cell type with no
+    # markers still contributes to the training of the other types as part
+    # of the "rest" class.
+    exprs <- exprs[all_markers, names(clusters), drop = FALSE]
     if (any(class(exprs) %in% c("dgCMatrix", "dgTMatrix"))) {
         exprs <- Matrix::t(exprs)
     } else {

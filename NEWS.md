@@ -1,5 +1,15 @@
 ## Version 0.0.7
 
+- ✨ `train_weights()` now derives the training cell types from the data
+  instead of the marker file. With a Seurat `exprs`, `clusters` can be
+  `NULL` (default, using `Seurat::Idents()`) or a column name in the
+  `meta.data`; with a matrix, it stays a named per-cell vector. A cell
+  type in the marker file with no cells of that type in the data is
+  ignored (with a warning), and its markers are pooled for the cell types
+  in the data that are not covered by the marker file, so those cell types
+  can still be trained. No cells are dropped from the training data, and
+  the returned weights cover only the cell types present in the data.
+
 - 🐛 Fix `train_weights()` failing on Seurat input (`exprs` as a Seurat
   object): clusters were converted to integer codes while `data$clusters`
   stayed a factor, so the per-method `clusters == ct` comparisons
