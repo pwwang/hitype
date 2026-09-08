@@ -75,7 +75,17 @@ train_weights <- function(
         path_to_gs, exprs, level, scaled, clusters
     )
 
-    clusters <- as.integer(data$clusters)
+    clusters <- as.character(data$clusters)
+    # Keep the cluster types consistent: the weight-learning methods iterate
+    # `unique(data$clusters)` and compare it against the `clusters` argument
+    # (`clusters == ct`), and `compile_weights()` must match `output_node`
+    # against the gene-set cell-type names. So both must carry the cell-type
+    # labels as characters. When `exprs` is a Seurat object, `data$clusters`
+    # is a factor: converting only the local to integer codes made
+    # `integer == factor` all-FALSE — a silently all-zero response (every
+    # `cv.glmnet` fit then failed and was swallowed by the tryCatch,
+    # yielding the rescale midpoint for all weights).
+    data$clusters <- clusters
     uclusters <- unique(clusters)
 
     # Hold-out test set (used only if data_split has 3 elements)

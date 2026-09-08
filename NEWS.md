@@ -1,3 +1,15 @@
+## Version 0.0.7
+
+- 🐛 Fix `train_weights()` failing on Seurat input (`exprs` as a Seurat
+  object): clusters were converted to integer codes while `data$clusters`
+  stayed a factor, so the per-method `clusters == ct` comparisons
+  (against `unique(data$clusters)`) were all-FALSE, every supervised fit
+  errored inside a `tryCatch` and was silently swallowed, and all trained
+  weights came out as the rescale midpoint (e.g. uniform `3` for the
+  default `range = c(1, 5)`). Clusters now stay as character cell-type
+  labels throughout, which `compile_weights()` also needs to match
+  `output_node` against the gene-set cell-type names.
+
 ## Version 0.0.6
 
 - ✨ `gs_prepare()` now auto-detects the **universal marker format** (a
