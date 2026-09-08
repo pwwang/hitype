@@ -17,6 +17,11 @@ reference:
     contents:
       - summary.hitype_result
       - print.hitype_result
+  - title: Bundled marker databases
+    contents:
+      - hitypedb_full
+      - hitypedb_short
+      - hitypedb_pbmc3k
 articles:
   - title: Vignettes
     navbar: ~
