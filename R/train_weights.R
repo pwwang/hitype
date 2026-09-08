@@ -45,7 +45,7 @@
 #'  }
 #' @param format The format of the output data frame. One of
 #'   `"universal"` (default) or `"db"` (the hitype/ScType wide format).
-#'
+#' @param seed Random seed for reproducibility
 #' @return A data frame with the weights in the universal marker format
 #'  (default) or the db format (`format = "db"`), that can be used directly
 #'  by [gs_prepare()].
@@ -64,11 +64,12 @@ train_weights <- function(
     run_weights_on_test = TRUE,
     cv_folds = 1,
     method = c("glmnet", "lr", "rf", "xgb", "lrp", "correlation", "uniform"),
-    format = c("universal", "db")
+    format = c("universal", "db"),
+    seed = 8525
 ) {
     method <- match.arg(method)
     format <- match.arg(format)
-    set.seed(1)
+    set.seed(seed)
 
     data <- prepare_data_for_training(
         path_to_gs, exprs, level, scaled, clusters

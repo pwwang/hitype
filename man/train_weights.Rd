@@ -17,7 +17,8 @@ train_weights(
   run_weights_on_test = TRUE,
   cv_folds = 1,
   method = c("glmnet", "lr", "rf", "xgb", "lrp", "correlation", "uniform"),
-  format = c("universal", "db")
+  format = c("universal", "db"),
+  seed = 8525
 )
 }
 \arguments{
@@ -71,6 +72,8 @@ Deep learning approach. Requires the keras and innsight packages.}
 
 \item{format}{The format of the output data frame. One of
 \code{"universal"} (default) or \code{"db"} (the hitype/ScType wide format).}
+
+\item{seed}{Random seed for reproducibility}
 }
 \value{
 A data frame with the weights in the universal marker format
