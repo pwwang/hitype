@@ -1,0 +1,236 @@
+# hitype
+
+**Hi**erarchical and **hi**gh-resolution cell-type identification for
+single-cell RNA-seq data inspired by
+[ScType](https://github.com/IanevskiAleksandr/sc-type).
+
+## Features
+
+- Compatibility with
+  [ScType](https://github.com/IanevskiAleksandr/sc-type)
+- Hierarchical and high-resolution cell-type identification
+- Learn marker weights from data with 7 methods: `uniform`,
+  `correlation`, `lr`, `glmnet` (default), `rf`, `xgb`, `lrp`
+- Cross-validated weight training (`cv_folds`) for stable, statistically
+  sound weights
+- Optional marker-sensitivity weighting and score normalization
+  (`use_sensitivity`, `norm`)
+- Speed optimization
+- Support as an R package with unit tests
+
+## Installation
+
+You can install the development version of `hitype` like so:
+
+``` r
+if (!requireNamespace("devtools", quietly = TRUE)) {
+    install.packages("devtools")
+}
+devtools::install_github("pwwang/hitype")
+```
+
+Optional packages for the individual weight-learning methods: `glmnet`
+(method `glmnet`), `ranger` (method `rf`), `xgboost` (method `xgb`),
+`keras` + `innsight` (method `lrp`).
+
+## Quick start
+
+### Prepare the dataset
+
+See also
+<https://satijalab.org/seurat/articles/pbmc3k_tutorial.html#setup-the-seurat-object>
+
+Click to expand
+
+``` r
+pbmc <- pbmc3k.SeuratData::pbmc3k
+pbmc <- Seurat::UpdateSeuratObject(pbmc)
+pbmc[["percent.mt"]] <- Seurat::PercentageFeatureSet(pbmc, pattern = "^MT-")
+pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+pbmc <- Seurat::NormalizeData(pbmc)
+pbmc <- Seurat::FindVariableFeatures(pbmc, selection.method = "vst", nfeatures = 2000)
+pbmc <- Seurat::ScaleData(pbmc, features = rownames(pbmc))
+pbmc <- Seurat::RunPCA(pbmc, features = Seurat::VariableFeatures(object = pbmc))
+pbmc <- Seurat::FindNeighbors(pbmc, dims = 1:10)
+pbmc <- Seurat::FindClusters(pbmc, resolution = 0.5)
+pbmc <- Seurat::RunUMAP(pbmc, dims = 1:10)
+```
+
+### Use as a Seurat extension
+
+``` r
+library(hitype)
+
+markers <- data.frame(
+    cellName = c(
+        "Naive CD4+ T", "CD14+ Mono", "Memory CD4+", "B",
+        "CD8+ T", "FCFR3A+ Mono", "NK", "DC", "Platelet"
+    ),
+    geneSymbolmore1 = c(
+        "IL7R,CCR7",  "CD14,LYZ", "IL7R,S100A4", "MS4A1",
+        "CD8A", "FCGR3A,MS4A7", "GNLY,NKG7", "FCER1A,CST3", "PPBP"
+    ),
+    geneSymbolmore2 = rep("", 9)
+)
+
+# Load gene sets
+gs <- gs_prepare(markers)
+
+# Assign cell types
+obj <- RunHitype(pbmc, gs)
+
+Seurat::DimPlot(obj, group.by = "hitype", label = TRUE, label.box = TRUE) +
+  Seurat::NoLegend()
+```
+
+Compared to the manual marked cell types: ![Seurat manual marked cell
+types](https://satijalab.org/seurat/articles/pbmc3k_tutorial_files/figure-html/labelplot-1.png)
+
+See also
+<https://satijalab.org/seurat/articles/pbmc3k_tutorial.html#assigning-cell-type-identity-to-clusters>
+
+### Use as standalone functions
+
+``` r
+scores <- hitype_score(Seurat::GetAssayData(pbmc, layer = "data"), gs)
+cell_types <- hitype_assign(pbmc$seurat_clusters, scores, gs)
+summary(cell_types)
+```
+
+You may see that we have exactly the same assignment in the Seurat
+tutorial:
+
+| Cluster ID | Markers       | Cell Type    |
+|:-----------|:--------------|:-------------|
+| 0          | IL7R, CCR7    | Naive CD4+ T |
+| 1          | CD14, LYZ     | CD14+ Mono   |
+| 2          | IL7R, S100A4  | Memory CD4+  |
+| 3          | MS4A1         | B            |
+| 4          | CD8A          | CD8+ T       |
+| 5          | FCGR3A, MS4A7 | FCGR3A+ Mono |
+| 6          | GNLY, NKG7    | NK           |
+| 7          | FCER1A, CST3  | DC           |
+| 8          | PPBP          | Platelet     |
+
+[`hitype_score()`](https://pwwang.github.io/hitype/reference/hitype_score.md)
+accepts log-normalized data by default (`scaled = FALSE`; it performs
+its own z-scoring) or pre-scaled data with `scaled = TRUE`. When scoring
+with learned weights (see below), use
+`norm = "weight", use_sensitivity = FALSE` — this normalizes scores by
+the total marker weight and avoids double-penalizing shared markers.
+
+### Train marker weights
+
+[`train_weights()`](https://pwwang.github.io/hitype/reference/train_weights.md)
+learns per-marker weights from a labeled dataset (clusters or cell
+types) with 7 backends:
+
+| `method`      | Description                                       | Requires            |
+|:--------------|:--------------------------------------------------|:--------------------|
+| `uniform`     | Equal weights (baseline)                          | —                   |
+| `correlation` | Correlation of each marker with the cluster label | —                   |
+| `lr`          | Logistic regression (one-vs-rest) coefficients    | —                   |
+| `glmnet`      | Sparse elastic-net logistic regression (default)  | `glmnet`            |
+| `rf`          | Random forest permutation importance              | `ranger`            |
+| `xgb`         | XGBoost gain-based feature importance             | `xgboost`           |
+| `lrp`         | Neural network + Layer-wise Relevance Propagation | `keras`, `innsight` |
+
+``` r
+weights <- train_weights(
+    path_to_gs = markers,
+    exprs = pbmc,
+    method = "glmnet",
+    cv_folds = 5
+)
+gs <- gs_prepare(weights)
+```
+
+`cv_folds > 1` performs stratified cross-validation inside the training
+data and averages the weights across folds for stability. **Do not
+evaluate on data used for training** — train the weights on a train
+split and score on a held-out split (or another dataset) to avoid
+optimistic, circular results. See
+[`vignette("train-marker-weights")`](https://pwwang.github.io/hitype/articles/train-marker-weights.md)
+for a full walkthrough including cross-dataset transfer.
+
+### Find markers from your data
+
+[`find_markers()`](https://pwwang.github.io/hitype/reference/find_markers.md)
+discovers marker genes from a labeled dataset and returns them directly
+in the database format consumed by
+[`gs_prepare()`](https://pwwang.github.io/hitype/reference/gs_prepare.md).
+The default `method = "fc"` is dependency-light; `"seurat"` and
+`"presto"` backends are also available:
+
+``` r
+markers <- find_markers(
+    exprs = pbmc, clusters = pbmc$seurat_clusters, method = "fc"
+)
+weights <- train_weights(
+    path_to_gs = markers, exprs = pbmc, method = "glmnet"
+)
+gs <- gs_prepare(weights)
+```
+
+**Fair-use warning:** markers and weights derived from the same dataset
+are for exploratory use only. For publications, keep the marker database
+fixed and follow the benchmark protocol (see `paper_plan.md`) to avoid
+circular results.
+
+## Documentation
+
+<https://pwwang.github.io/hitype/>
+
+# Package index
+
+## Cell type scoring and assignment with Hitype
+
+- [`gs_prepare()`](https://pwwang.github.io/hitype/reference/gs_prepare.md)
+  : Prepare gene sets for hitype
+- [`hitype_score()`](https://pwwang.github.io/hitype/reference/hitype_score.md)
+  : Calculate cell type scores
+- [`hitype_assign()`](https://pwwang.github.io/hitype/reference/hitype_assign.md)
+  : Generate scores for cell types for each level
+- [`RunHitype()`](https://pwwang.github.io/hitype/reference/RunHitype.md)
+  : Run hitype_assign for a Seurat object
+
+## Marker weight training
+
+- [`train_weights()`](https://pwwang.github.io/hitype/reference/train_weights.md)
+  : Train weights for the markers
+- [`find_markers()`](https://pwwang.github.io/hitype/reference/find_markers.md)
+  : Find marker genes for cell types
+
+## Summarizing Hitype results
+
+- [`summary(`*`<hitype_result>`*`)`](https://pwwang.github.io/hitype/reference/summary.hitype_result.md)
+  : Summarize the hitype_result object
+- [`print(`*`<hitype_result>`*`)`](https://pwwang.github.io/hitype/reference/print.hitype_result.md)
+  : Print the summary of the hitype_result object
+
+## Bundled marker databases
+
+- [`hitypedb_full`](https://pwwang.github.io/hitype/reference/hitypedb_full.md)
+  : Gene sets from ScType (full version)
+- [`hitypedb_short`](https://pwwang.github.io/hitype/reference/hitypedb_short.md)
+  : Gene sets from ScType (short version)
+- [`hitypedb_pbmc3k`](https://pwwang.github.io/hitype/reference/hitypedb_pbmc3k.md)
+  : Gene sets with weights trained from the PBMC 3k dataset
+
+# Articles
+
+### Vignettes
+
+- [Prepare gene
+  sets](https://pwwang.github.io/hitype/articles/prepare-gene-sets.md):
+- [Calculate cell type scores and assign cell
+  types](https://pwwang.github.io/hitype/articles/calculate-cell-type-scores-and-assign-cell-types.md):
+- [Train marker
+  weights](https://pwwang.github.io/hitype/articles/train-marker-weights.md):
+
+### Articles
+
+- [Hitype is faster than
+  ScType](https://pwwang.github.io/hitype/articles/hitype-is-faster.md):
+- [Marker weights improve cell type
+  assignment](https://pwwang.github.io/hitype/articles/marker-weights-improves-results.md):
