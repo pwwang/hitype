@@ -7,39 +7,61 @@
 #' @importFrom stats na.omit
 #' @importFrom utils read.table
 #'
-#' @param path_to_db_file A data frame with markers or
-#'   Path to the marker gene database file, it should be
-#'   a tab-delimited text or excel file with the following columns:
-#'   - `tissueType`: The tissue type of the cell type to be annotated.
-#'       This column is required only if `cell_type` is specified.
-#'   - `cellName`: The name of the cell type to be annotated.
-#'   - `nextLevels`: Possible next levels of the cell type to be annotated.
-#'       Introduced by `hitype`, so that we can work with hierarchical cell.
-#'       Levels are separated by `;`. Cell names at each level are separated
-#'       by `,`. An exclamatory mark `!` at the beginning of a level means
-#'       that the cell names at this level are mutually exclusive. If the
-#'       levels are less than possible next levels, then the remaining levels
-#'       are all possible next levels. See the example below.
-#'   - `geneSymbolmore1`: The gene symbols of the marker genes that are
-#'       expected to be expressed in the cell type to be annotated.
-#'       The genes can be suffixed with one or more `+`. More `+` means
-#'       higher expression level. For example, `CD3E++` means the gene
-#'      `CD3E` is expected to be highly expressed in the cell type.
-#'   - `geneSymbolmore2`: The gene symbols of the marker genes that are
-#'       expected not to be expressed in the cell type to be annotated.
-#'   - `level`: The levels of the cell names. Introduced by `hitype`, so that
-#'       we can work with hierarchical cell names. Different levels of
-#'       `cellName`s are predicted separately. For example, If we have `CD4`
-#'       as level 1 and `Naive` as level 2, then our prediction for a cell type
-#'       could be `CD4 Naive`.
-#'       The levels should start from 1 and be consecutive. #'
+#' @param path_to_db_file A data frame with markers or a path to a marker
+#'   file. Two formats are supported and auto-detected:
+#'   - The hitype/ScType db format (a data.frame or a tab-delimited text or
+#'     excel file with the following columns):
+#'     - `tissueType`: The tissue type of the cell type to be annotated.
+#'         This column is required only if `tissue_type` is specified.
+#'     - `cellName`: The name of the cell type to be annotated.
+#'     - `nextLevels`: Possible next levels of the cell type to be annotated.
+#'         Introduced by `hitype`, so that we can work with hierarchical cell.
+#'         Levels are separated by `;`. Cell names at each level are separated
+#'         by `,`. An exclamatory mark `!` at the beginning of a level means
+#'         that the cell names at this level are mutually exclusive. If the
+#'         levels are less than possible next levels, then the remaining levels
+#'         are all possible next levels. See the example below.
+#'     - `geneSymbolmore1`: The gene symbols of the marker genes that are
+#'         expected to be expressed in the cell type to be annotated.
+#'         The genes can be suffixed with one or more `+`. More `+` means
+#'         higher expression level. For example, `CD3E++` means the gene
+#'        `CD3E` is expected to be highly expressed in the cell type.
+#'     - `geneSymbolmore2`: The gene symbols of the marker genes that are
+#'         expected not to be expressed in the cell type to be annotated.
+#'     - `level`: The levels of the cell names. Introduced by `hitype`, so that
+#'         we can work with hierarchical cell names. Different levels of
+#'         `cellName`s are predicted separately. For example, If we have `CD4`
+#'         as level 1 and `Naive` as level 2, then our prediction for a cell type
+#'         could be `CD4 Naive`.
+#'         The levels should start from 1 and be consecutive.
+#'   - The universal marker format (see
+#'     <https://pwwang.github.io/biopipen/api/biopipen.ns.scrna/>), a long
+#'     table with one row per gene per cell type:
+#'     - `cell_type` (required): the cell type.
+#'     - `gene` (required): the marker gene.
+#'     - `direction`: `positive` or `negative` (aliases: `pos`/`neg`/`+`/`-`,
+#'       case-insensitive). Optional. Defaults to `positive`.
+#'     - `weight`: a numeric weight. Optional. Defaults to 1. A positive
+#'       marker gets `abs(weight)`; a negative marker gets `-abs(weight)`.
+#'       If no `direction` is given, the weight is used as-is (so signed
+#'       weights are accepted).
+#'     - `tissue`, `species`, `cancer`: optional, for filtering by
+#'       `tissue_type`.
+#'     - `level`: optional. The levels should start from 1 and be consecutive.
+#'     Column names are case-insensitive and aliases are supported:
+#'     `celltype`/`cellType`/`Type` for `cell_type`, `marker`/`gene_symbol`
+#'     for `gene`, `sign` for `direction`, and `tissueType` for `tissue`.
+#'     Text files with extensions `txt`/`tsv`/`csv`/`xlsx`/`xls` are read
+#'     as tables; `rds`/`qs`/`qs2` files should contain a data.frame
+#'     (`qs`/`qs2` require the qs2 package to be installed).
 #'
 #' @param tissue_type The tissue type of the cell type to be annotated.
-#'   This requires the `tissueType` column in the marker gene database file.
-#'   If `tissue_type` is specified, then only the cell types in the specified
-#'   tissue type will be used for annotation. If `tissue_type` is not specified,
-#'   then all cell types in the marker gene database file will be used for
-#'   annotation.
+#'   For the db format, this requires the `tissueType` column in the marker
+#'   gene database file; for the universal format, the `tissue` column
+#'   (or its alias `tissueType`). If `tissue_type` is specified, then only
+#'   the cell types in the specified tissue type will be used for annotation.
+#'   If `tissue_type` is not specified, then all cell types in the marker
+#'   gene database file will be used for annotation.
 #'
 #' @param weight_encoding How to encoding the weights. By default, plus (+) for a
 #'   positive weight; minus (-) for a negative weight and a star (*) for zero weight.
@@ -74,6 +96,17 @@
 #' # are:
 #' #   CD4 Memory
 #'
+#' # A gene set in the universal marker format:
+#' markers <- data.frame(
+#'     cell_type = c("CD4", "CD4", "CD8", "CD8", "CD8"),
+#'     gene = c("CD4", "IL7R", "CD8A", "CD8B", "GZMB"),
+#'     direction = c("positive", "positive", "positive", "positive", "negative"),
+#'     weight = c(2, 1, 3, 1, 1)
+#' )
+#' gs <- gs_prepare(markers)
+#' gs$gene_sets[[1]]$CD4
+#' gs$gene_sets[[1]]$CD8
+#'
 #' @return A list with gene_sets and next_levels. The structure looks like:
 #' ```r
 #'   list(
@@ -92,10 +125,32 @@ gs_prepare <- function(path_to_db_file, tissue_type = NULL, weight_encoding = fu
     if (is.data.frame(path_to_db_file)) {
         cell_markers <- path_to_db_file
     } else {
-        # Allow xlsx to be compatible with sctype
         ext <- tolower(tools::file_ext(path_to_db_file))
         if (ext == "xlsx" || ext == "xls") {
+            # Allow xlsx to be compatible with sctype
             cell_markers <- openxlsx::read.xlsx(path_to_db_file)
+        } else if (ext == "csv") {
+            cell_markers <- utils::read.csv(
+                path_to_db_file,
+                stringsAsFactors = FALSE
+            )
+        } else if (ext == "rds") {
+            cell_markers <- readRDS(path_to_db_file)
+            if (!is.data.frame(cell_markers)) {
+                stop(
+                    "The `rds` file should contain a data.frame of markers."
+                )
+            }
+        } else if (ext == "qs2" || ext == "qs") {
+            if (!requireNamespace("qs2", quietly = TRUE)) {
+                stop("The package `qs2` is required to read `.qs2` or `.qs` files.")
+            }
+            cell_markers <- qs2::qs_read(path_to_db_file)
+            if (!is.data.frame(cell_markers)) {
+                stop(
+                    "The `qs2`/`qs` file should contain a data.frame of markers."
+                )
+            }
         } else {
             cell_markers <- read.table(
                 path_to_db_file,
@@ -104,6 +159,17 @@ gs_prepare <- function(path_to_db_file, tissue_type = NULL, weight_encoding = fu
                 stringsAsFactors = FALSE
             )
         }
+    }
+
+    # Detect the biopipen universal marker format (a long table with
+    # `cell_type` and `gene` columns), which the hitype/ScType db columns
+    # never have
+    if (is_universal_df(cell_markers)) {
+        return(gs_prepare_universal(
+            canonicalize_marker_cols(cell_markers),
+            tissue_type,
+            weight_encoding
+        ))
     }
 
     # Filter by tissue type
@@ -233,6 +299,181 @@ gs_prepare <- function(path_to_db_file, tissue_type = NULL, weight_encoding = fu
         cell_names <- c(cell_names, cnames)
     }
     list(gene_sets = gene_sets, cell_names = cell_names)
+}
+
+#' Canonical column names of the universal marker format
+#'
+#' Canonical names win over aliases. The hitype/ScType db columns
+#' (cellName, geneSymbolmore1/2, tissueType...) never collide with these.
+#' @keywords internal
+UNIVERSAL_COL_ALIASES <- list( # nolint
+    cell_type = c("cell_type", "celltype", "type"),
+    gene = c("gene", "marker", "gene_symbol"),
+    direction = c("direction", "sign"),
+    weight = c("weight"),
+    species = c("species"),
+    cancer = c("cancer"),
+    tissue = c("tissue", "tissueType"),
+    level = c("level")
+)
+
+#' Rename case-insensitive alias columns to their canonical names
+#' @keywords internal
+#' @param df A data.frame of markers.
+#' @return The data.frame with canonical column names.
+canonicalize_marker_cols <- function(df) {
+    cn <- colnames(df)
+    low_cn <- tolower(cn)
+    for (canonical in names(UNIVERSAL_COL_ALIASES)) {
+        if (canonical %in% cn) {
+            next
+        }
+        hit <- which(low_cn %in% tolower(UNIVERSAL_COL_ALIASES[[canonical]]))[1]
+        if (!is.na(hit)) {
+            cn[hit] <- canonical
+        }
+    }
+    colnames(df) <- cn
+    df
+}
+
+#' A frame is in the universal marker format iff it has (case-insensitively)
+#' a cell_type-family and a gene-family column. db frames never do.
+#' @keywords internal
+#' @param df A data.frame of markers.
+#' @return `TRUE` if the frame is in the universal marker format.
+is_universal_df <- function(df) {
+    if (!is.data.frame(df)) {
+        return(FALSE)
+    }
+    cn <- tolower(colnames(df))
+    any(cn %in% c("cell_type", "celltype", "type")) &&
+        any(cn %in% c("gene", "marker", "gene_symbol"))
+}
+
+#' Prepare a gene set in the universal marker format
+#'
+#' The universal marker format is a long table (one row per gene per cell
+#' type) with `cell_type` and `gene` columns, as used by biopipen
+#' (<https://pwwang.github.io/biopipen/api/biopipen.ns.scrna/>). The columns
+#' are canonicalized by [canonicalize_marker_cols()] before this is called.
+#'
+#' @keywords internal
+#'
+#' @param cm The canonicalized marker table
+#' @param tissue_type The tissue type to filter the markers by
+#' @param weight_encoding The weight encoding function
+#'
+#' @return A list with `gene_sets` and `cell_names` (NULL)
+gs_prepare_universal <- function(cm, tissue_type = NULL, weight_encoding = function(x) x) {
+    # Filter by tissue type
+    if (!is.null(tissue_type)) {
+        if (is.null(cm$tissue)) {
+            stop("The marker table does not have the `tissue` column.")
+        }
+        cm <- cm[cm$tissue == tissue_type, , drop = FALSE]
+    }
+
+    # Drop rows with missing/empty cell types or genes
+    keep <- !is.na(cm$cell_type) & !is.na(cm$gene) &
+        trimws(as.character(cm$cell_type)) != "" &
+        trimws(as.character(cm$gene)) != ""
+    cm <- cm[keep, , drop = FALSE]
+    cm$cell_type <- trimws(as.character(cm$cell_type))
+    cm$gene <- trimws(as.character(cm$gene))
+    if (any(grepl("[,;]", cm$cell_type))) {
+        stop("The cell names should not contain `,` or `;`. ")
+    }
+
+    # Validate levels, the same as the db format
+    if (is.null(cm$level)) {
+        cm$level <- 1
+    }
+    if (min(cm$level) != 1) {
+        stop("Level should start from 1.")
+    }
+    if (length(unique(cm$level)) != max(cm$level)) {
+        stop("Level should be consecutive.")
+    }
+
+    # Normalize directions (positive/negative, aliases: pos/neg/+/-
+    # case-insensitive). NA/"" means no direction for that row.
+    has_dir <- !is.null(cm$direction)
+    if (has_dir) {
+        direction <- tolower(trimws(as.character(cm$direction)))
+        direction[is.na(direction) | direction == ""] <- NA_character_
+        bad <- !is.na(direction) &
+            !direction %in% c("positive", "pos", "neg", "negative", "+", "-")
+        if (any(bad)) {
+            stop(
+                "Invalid `direction` value(s): ",
+                paste(unique(direction[bad]), collapse = ", "),
+                ". Accepted values: positive/negative (aliases: pos/neg/+/-)."
+            )
+        }
+    }
+
+    # Decode weights per row: the direction is authoritative for the sign.
+    # - positive marker: abs(weight)
+    # - negative marker: -abs(weight)
+    # - no direction but a weight column: weight as-is (already signed)
+    # - neither: 1
+    has_wt <- !is.null(cm$weight)
+    weight <- if (has_wt) {
+        raw_wt <- as.character(cm$weight)
+        w <- suppressWarnings(as.numeric(raw_wt))
+        # Rows with an empty/missing weight fall back to the default of 1,
+        # as if the `weight` column were absent for that row
+        w[is.na(raw_wt) | trimws(raw_wt) == ""] <- 1
+        if (anyNA(w)) {
+            stop("The `weight` column contains non-numeric values.")
+        }
+        w
+    } else {
+        rep(1, nrow(cm))
+    }
+    # Rows with a valid direction: the direction is authoritative for the
+    # sign (positive -> abs(weight), negative -> -abs(weight)).
+    # Rows without a direction (column absent, or NA/""): signed weight
+    # as-is if a weight column exists, otherwise 1.
+    dir_neg <- rep(FALSE, nrow(cm))
+    dir_pos <- rep(FALSE, nrow(cm))
+    if (has_dir) {
+        dir_neg <- !is.na(direction) &
+            direction %in% c("negative", "neg", "-")
+        dir_pos <- !is.na(direction) &
+            direction %in% c("positive", "pos", "+")
+    }
+    signed <- rep(1, nrow(cm))
+    if (has_wt) {
+        signed <- weight
+    }
+    signed[dir_neg] <- -abs(weight[dir_neg])
+    signed[dir_pos] <- abs(weight[dir_pos])
+
+    rows <- data.frame(
+        level = cm$level,
+        cell_type = cm$cell_type,
+        gene = cm$gene,
+        signed = signed,
+        stringsAsFactors = FALSE
+    )
+    gene_sets <- lapply(
+        split(rows, rows$level),
+        function(x) {
+            lapply(
+                split(x, x$cell_type, drop = TRUE),
+                function(y) {
+                    y <- y[!duplicated(y$gene), , drop = FALSE]
+                    list(
+                        markers = y$gene,
+                        weights = unname(weight_encoding(y$signed))
+                    )
+                }
+            )
+        }
+    )
+    list(gene_sets = gene_sets, cell_names = NULL)
 }
 
 #' Parse all next levels of current cell name

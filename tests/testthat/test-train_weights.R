@@ -47,10 +47,32 @@ test_that("train_weights() works", {
         pbmc <- Seurat::RenameIdents(pbmc, new_cluster_ids)
     }
 
-    db <- train_weights(
+    w <- train_weights(
         path_to_gs = path_to_gs,
         exprs = pbmc
     )
-    expect_true(is.data.frame(db))
+    # Default: universal marker format, one row per cell_type-gene pair
+    expect_equal(
+        colnames(w),
+        c("cell_type", "gene", "direction", "weight", "level")
+    )
+    expect_equal(w$level, rep(1L, nrow(w)))
+    expect_true(all(w$direction %in% c("positive", "negative")))
+    expect_true(all(w$weight >= 0))
+    expect_equal(length(unique(w$cell_type)), 9)
+    # Round-trips into gs_prepare covering all 9 cell types
+    gs <- gs_prepare(w)
+    expect_equal(length(gs$gene_sets[[1]]), 9)
+
+    # Legacy wide format via format = "db"
+    db <- train_weights(
+        path_to_gs = path_to_gs,
+        exprs = pbmc,
+        format = "db"
+    )
+    expect_true(all(
+        c("cellName", "geneSymbolmore1", "geneSymbolmore2", "level") %in%
+            colnames(db)
+    ))
     expect_equal(nrow(db), 9)
 })

@@ -16,7 +16,8 @@ train_weights(
   batch_size = 32,
   run_weights_on_test = TRUE,
   cv_folds = 1,
-  method = c("glmnet", "lr", "rf", "xgb", "lrp", "correlation", "uniform")
+  method = c("glmnet", "lr", "rf", "xgb", "lrp", "correlation", "uniform"),
+  format = c("universal", "db")
 )
 }
 \arguments{
@@ -67,10 +68,14 @@ State-of-the-art tree method. Requires the xgboost package.}
 \item{"lrp"}{Neural network + Layer-wise Relevance Propagation.
 Deep learning approach. Requires the keras and innsight packages.}
 }}
+
+\item{format}{The format of the output data frame. One of
+\code{"universal"} (default) or \code{"db"} (the hitype/ScType wide format).}
 }
 \value{
-A data frame with the weights, that can be used directly by
-\code{\link[=gs_prepare]{gs_prepare()}}.
+A data frame with the weights in the universal marker format
+(default) or the db format (\code{format = "db"}), that can be used directly
+by \code{\link[=gs_prepare]{gs_prepare()}}.
 }
 \description{
 Train weights for the markers

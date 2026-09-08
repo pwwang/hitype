@@ -43,9 +43,12 @@
 #'    \item{"lrp"}{Neural network + Layer-wise Relevance Propagation.
 #'      Deep learning approach. Requires the keras and innsight packages.}
 #'  }
+#' @param format The format of the output data frame. One of
+#'   `"universal"` (default) or `"db"` (the hitype/ScType wide format).
 #'
-#' @return A data frame with the weights, that can be used directly by
-#'  [gs_prepare()].
+#' @return A data frame with the weights in the universal marker format
+#'  (default) or the db format (`format = "db"`), that can be used directly
+#'  by [gs_prepare()].
 #'
 #' @export
 train_weights <- function(
@@ -60,9 +63,11 @@ train_weights <- function(
     batch_size = 32,
     run_weights_on_test = TRUE,
     cv_folds = 1,
-    method = c("glmnet", "lr", "rf", "xgb", "lrp", "correlation", "uniform")
+    method = c("glmnet", "lr", "rf", "xgb", "lrp", "correlation", "uniform"),
+    format = c("universal", "db")
 ) {
     method <- match.arg(method)
+    format <- match.arg(format)
     set.seed(1)
 
     data <- prepare_data_for_training(
@@ -100,7 +105,7 @@ train_weights <- function(
         )
     )
 
-    weights <- compile_weights(result, data$gs, level, range)
+    weights <- compile_weights(result, data$gs, level, range, format)
     if (!is.null(test_data_x) && run_weights_on_test) {
         run_weights_on_test_data(
             weights, exprs, clusters, scaled, rownames(test_data_x)
@@ -666,9 +671,14 @@ prepare_data_for_training <- function(
 #' @param gs The gene sets
 #' @param level The level of the gene sets
 #' @param range The range of the weights
+#' @param format The format of the output data frame. One of
+#'   `"universal"` (default) or `"db"`.
 #'
-#' @return A data frame as the db
-compile_weights <- function(weights, gs, level, range) {
+#' @return A data frame with the compiled weights in the universal marker
+#'   format (default) or the db format (`format = "db"`), consumable by
+#'   [gs_prepare()].
+compile_weights <- function(weights, gs, level, range, format = c("universal", "db")) {
+    format <- match.arg(format)
     if (any(diff(range) < 0)) {
         stop("range must be increasing")
     }
@@ -695,6 +705,26 @@ compile_weights <- function(weights, gs, level, range) {
             weights$weight[weights$weight < 0],
             to = range[1:2]
         )
+    }
+
+    if (format == "universal") {
+        parts <- lapply(names(gs), function(x) {
+            markers <- explode(gs[[x]]$markers)
+            w <- weights$weight[weights$output_node == x]
+            names(w) <- weights$feature[weights$output_node == x]
+            v <- rep(1, length(markers))
+            hit <- markers %in% names(w)
+            v[hit] <- unname(w[markers[hit]])
+            data.frame(
+                cell_type = x,
+                gene = markers,
+                direction = ifelse(v >= 0, "positive", "negative"),
+                weight = abs(v),
+                level = as.integer(level),
+                stringsAsFactors = FALSE
+            )
+        })
+        return(do.call(rbind, parts))
     }
 
     db <- data.frame(

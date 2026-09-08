@@ -13,7 +13,8 @@ find_markers(
   min_pct = 0.1,
   only_pos = TRUE,
   include_negative = FALSE,
-  level = 1
+  level = 1,
+  format = c("universal", "db")
 )
 }
 \arguments{
@@ -50,12 +51,17 @@ passing \code{min_pct} are considered, ranked by score.}
 \item{include_negative}{If \code{TRUE}, also fill the \code{geneSymbolmore2}
 column with the top down-regulated markers per cell type.}
 
-\item{level}{The hierarchy level to write into the output database.}
+\item{level}{The hierarchy level to write into the output data frame.}
+
+\item{format}{The format of the output data frame. One of
+\code{"universal"} (default) or \code{"db"} (the hitype/ScType wide format).}
 }
 \value{
-A data frame in the hitype db format with columns \code{cellName},
-\code{geneSymbolmore1}, \code{geneSymbolmore2} and \code{level}, directly consumable
-by \code{\link[=gs_prepare]{gs_prepare()}}.
+A data frame in the universal marker format (default) with
+columns \code{cell_type}, \code{gene}, \code{direction} and \code{level}, or in the hitype
+db format (\code{format = "db"}) with columns \code{cellName},
+\code{geneSymbolmore1}, \code{geneSymbolmore2} and \code{level}. Both are directly
+consumable by \code{\link[=gs_prepare]{gs_prepare()}}.
 }
 \description{
 Discovers marker genes for each cell type (cluster) in an expression

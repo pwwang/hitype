@@ -1,3 +1,24 @@
+## Version 0.0.6
+
+- ✨ `gs_prepare()` now auto-detects the **universal marker format** (a
+  long table with `cell_type` and `gene` columns, shared with biopipen's
+  `CellTypeAnnotation`) in addition to the native wide ScType-style
+  format. Column aliases are matched case-insensitively
+  (`celltype`/`type` → `cell_type`; `marker`/`gene_symbol` → `gene`;
+  `sign` → `direction`; `tissueType` → `tissue`). Optional columns:
+  `direction` (positive/negative, aliases `pos`/`neg`/`+`/`-`), `weight`
+  (numeric; positive markers get `abs(weight)`, negative markers get
+  `-abs(weight)`, signed weights are used as-is when `direction` is
+  missing), `tissue` (filtered by `tissue_type`), and `level`. Marker
+  files can be `.txt`/`.tsv`, `.csv`, `.xlsx`, `.rds`, or `.qs`/`.qs2`
+  (the latter only when the `qs`/`qs2` package is installed).
+- ✨ `train_weights()` and `find_markers()` gain a `format` argument
+  (`"universal"` by default, `"db"` for the legacy wide format), and so
+  does the internal `compile_weights()`. The default universal output
+  carries exact numeric weights — the legacy db format's weight-suffix
+  magnitude shift no longer applies to the default flow, including
+  `run_weights_on_test_data`.
+
 ## Version 0.0.5
 
 - ✨ Add `find_markers()` to discover marker genes from your data with

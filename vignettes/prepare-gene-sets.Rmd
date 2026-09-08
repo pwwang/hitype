@@ -31,9 +31,46 @@ gs$gene_sets[[1]]$`Acinar cells`
 # )
 ```
 
-## Preparing your own gene sets
+## Universal marker format (long table)
 
-You can also prepare your own gene sets. The gene sets should be a `data.frame` or a tab-delimited file with the following columns:
+Besides the wide `ScType` format below, `gs_prepare()` also accepts the
+**universal marker format** — a long table with one row per
+(cell type, marker) pair, as used across the author's
+[biopipen](https://pwwang.github.io/biopipen/) tools. It is also the
+default output of `train_weights()` and `find_markers()`.
+
+The table can be a `data.frame` or a file (`.txt`/`.tsv`, `.csv`, `.xlsx`,
+`.rds`, or `.qs`/`.qs2` if the qs2 package is installed) with the
+following columns:
+
+- `cell_type` (required): Cell type name.
+- `gene` (required): Marker gene.
+- `direction` (optional): `positive` or `negative` (aliases `pos`/`neg`/`+`/`-`, case-insensitive). Negative markers penalize a cell type.
+- `weight` (optional): Numeric magnitude of the marker weight. Combined with `direction`: a positive marker gets weight `abs(weight)`, a negative marker gets `-abs(weight)`. If `direction` is missing, the signed `weight` is used as-is. If neither is given, the marker gets weight 1. Zero-weight markers are allowed.
+- `tissue` (optional): Tissue type. One can pass `tissue_type` to `gs_prepare()` to filter gene sets by tissue type.
+- `species`, `cancer` (optional): Reserved filter columns (accepted and ignored by `gs_prepare()`).
+- `level` (optional): Cell type level, as in the `ScType` format below.
+
+Column names are matched case-insensitively and by alias
+(`celltype`/`type` → `cell_type`; `marker`/`gene_symbol` → `gene`;
+`sign` → `direction`; `tissueType` → `tissue`).
+
+```{r}
+markers <- data.frame(
+    cell_type = rep(c("CD4 T", "CD8 T"), each = 3),
+    gene = c("CD3E", "CD4", "IL7R", "CD3E", "CD8A", "CD8B"),
+    direction = c("positive", "positive", "negative", "positive", "positive", "positive"),
+    weight = c(2.0, 1.5, 0.5, 2.0, 1.0, 1.0)
+)
+gs <- gs_prepare(markers)
+gs$gene_sets[[1]]$`CD4 T`
+```
+
+## Preparing your own gene sets (wide ScType format)
+
+You can also prepare your own gene sets in the wide `ScType` format.
+The gene sets should be a `data.frame` or a tab-delimited file with the
+following columns:
 
 - `tissueType` (optional): Tissue type. One can pass `tissue_type` to `gs_prepare()` to filter gene sets by tissue type.
 - `cellName` (required): Cell type name.

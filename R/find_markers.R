@@ -34,11 +34,15 @@
 #'  passing `min_pct` are considered, ranked by score.
 #' @param include_negative If `TRUE`, also fill the `geneSymbolmore2`
 #'  column with the top down-regulated markers per cell type.
-#' @param level The hierarchy level to write into the output database.
+#' @param level The hierarchy level to write into the output data frame.
+#' @param format The format of the output data frame. One of
+#'   `"universal"` (default) or `"db"` (the hitype/ScType wide format).
 #'
-#' @return A data frame in the hitype db format with columns `cellName`,
-#'  `geneSymbolmore1`, `geneSymbolmore2` and `level`, directly consumable
-#'  by [gs_prepare()].
+#' @return A data frame in the universal marker format (default) with
+#'  columns `cell_type`, `gene`, `direction` and `level`, or in the hitype
+#'  db format (`format = "db"`) with columns `cellName`,
+#'  `geneSymbolmore1`, `geneSymbolmore2` and `level`. Both are directly
+#'  consumable by [gs_prepare()].
 #'
 #' @importFrom stats setNames
 #'
@@ -65,9 +69,11 @@ find_markers <- function(
     min_pct = 0.1,
     only_pos = TRUE,
     include_negative = FALSE,
-    level = 1
+    level = 1,
+    format = c("universal", "db")
 ) {
     method <- match.arg(method)
+    format <- match.arg(format)
     if (!is.numeric(top) || length(top) != 1 || is.na(top) || top < 1) {
         stop("`top` must be a single number >= 1")
     }
@@ -175,13 +181,31 @@ find_markers <- function(
         )
     )
 
-    data.frame(
+    db <- data.frame(
         cellName = cts,
         geneSymbolmore1 = unname(res$markers1[cts]),
         geneSymbolmore2 = unname(res$markers2[cts]),
         level = rep(as.integer(level), length(cts)),
         stringsAsFactors = FALSE
     )
+    if (format == "universal") {
+        parts <- lapply(seq_len(nrow(db)), function(i) {
+            p1 <- explode(db$geneSymbolmore1[i]); p1 <- p1[p1 != ""]
+            p2 <- explode(db$geneSymbolmore2[i]); p2 <- p2[p2 != ""]
+            data.frame(
+                cell_type = db$cellName[i],
+                gene = c(p1, p2),
+                direction = c(
+                    rep("positive", length(p1)),
+                    rep("negative", length(p2))
+                ),
+                level = db$level[i],
+                stringsAsFactors = FALSE
+            )
+        })
+        return(do.call(rbind, parts))
+    }
+    db
 }
 
 # ============================================================================

@@ -165,9 +165,10 @@ for a full walkthrough including cross-dataset transfer.
 ### Find markers from your data
 
 `find_markers()` discovers marker genes from a labeled dataset and
-returns them directly in the database format consumed by `gs_prepare()`.
-The default `method = "fc"` is dependency-light; `"seurat"` and
-`"presto"` backends are also available:
+returns them directly in the universal marker format consumed by
+`gs_prepare()` (pass `format = "db"` for the legacy wide ScType-style
+format). The default `method = "fc"` is dependency-light; `"seurat"`
+and `"presto"` backends are also available:
 
 ``` r
 markers <- find_markers(

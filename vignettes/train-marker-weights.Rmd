@@ -32,7 +32,10 @@ install.packages("innsight")
 keras::install_keras()
 ```
 
-To train the weights for the markers, firstly, we have to have the markers in the original `ScType` format:
+To train the weights for the markers, firstly, we have to have the markers.
+They can be in the universal marker format (a long table with `cell_type`
+and `gene` columns — what `find_markers()` returns by default) or in the
+original `ScType` format. Here we use the `ScType` format:
 
 ```{r}
 markers <- data.frame(
@@ -144,8 +147,9 @@ summary(assigned)
 ## Finding markers from your own data
 
 `find_markers()` discovers marker genes from a labeled dataset (e.g.
-`pbmc$seurat_clusters`) and returns them directly in the database format
-consumed by `gs_prepare()`, with dependency-light fold-change (`fc`,
+`pbmc$seurat_clusters`) and returns them directly in the universal marker
+format consumed by `gs_prepare()` (pass `format = "db"` for the legacy
+wide ScType-style format), with dependency-light fold-change (`fc`,
 default), `Seurat`, or `presto` backends:
 
 ```{r, eval=FALSE}

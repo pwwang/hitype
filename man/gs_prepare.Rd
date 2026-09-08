@@ -11,12 +11,14 @@ gs_prepare(
 )
 }
 \arguments{
-\item{path_to_db_file}{A data frame with markers or
-Path to the marker gene database file, it should be
-a tab-delimited text or excel file with the following columns:
+\item{path_to_db_file}{A data frame with markers or a path to a marker
+file. Two formats are supported and auto-detected:
+\itemize{
+\item The hitype/ScType db format (a data.frame or a tab-delimited text or
+excel file with the following columns):
 \itemize{
 \item \code{tissueType}: The tissue type of the cell type to be annotated.
-This column is required only if \code{cell_type} is specified.
+This column is required only if \code{tissue_type} is specified.
 \item \code{cellName}: The name of the cell type to be annotated.
 \item \code{nextLevels}: Possible next levels of the cell type to be annotated.
 Introduced by \code{hitype}, so that we can work with hierarchical cell.
@@ -37,15 +39,39 @@ we can work with hierarchical cell names. Different levels of
 \code{cellName}s are predicted separately. For example, If we have \code{CD4}
 as level 1 and \code{Naive} as level 2, then our prediction for a cell type
 could be \verb{CD4 Naive}.
-The levels should start from 1 and be consecutive. #'
+The levels should start from 1 and be consecutive.
+}
+\item The universal marker format (see
+\url{https://pwwang.github.io/biopipen/api/biopipen.ns.scrna/}), a long
+table with one row per gene per cell type:
+\itemize{
+\item \code{cell_type} (required): the cell type.
+\item \code{gene} (required): the marker gene.
+\item \code{direction}: \code{positive} or \code{negative} (aliases: \code{pos}/\code{neg}/\code{+}/\code{-},
+case-insensitive). Optional. Defaults to \code{positive}.
+\item \code{weight}: a numeric weight. Optional. Defaults to 1. A positive
+marker gets \code{abs(weight)}; a negative marker gets \code{-abs(weight)}.
+If no \code{direction} is given, the weight is used as-is (so signed
+weights are accepted).
+\item \code{tissue}, \code{species}, \code{cancer}: optional, for filtering by
+\code{tissue_type}.
+\item \code{level}: optional. The levels should start from 1 and be consecutive.
+Column names are case-insensitive and aliases are supported:
+\code{celltype}/\code{cellType}/\code{Type} for \code{cell_type}, \code{marker}/\code{gene_symbol}
+for \code{gene}, \code{sign} for \code{direction}, and \code{tissueType} for \code{tissue}.
+Text files with extensions \code{txt}/\code{tsv}/\code{csv}/\code{xlsx}/\code{xls} are read
+as tables; \code{rds}/\code{qs}/\code{qs2} files should contain a data.frame
+(\code{qs}/\code{qs2} require the qs2 package to be installed).
+}
 }}
 
 \item{tissue_type}{The tissue type of the cell type to be annotated.
-This requires the \code{tissueType} column in the marker gene database file.
-If \code{tissue_type} is specified, then only the cell types in the specified
-tissue type will be used for annotation. If \code{tissue_type} is not specified,
-then all cell types in the marker gene database file will be used for
-annotation.}
+For the db format, this requires the \code{tissueType} column in the marker
+gene database file; for the universal format, the \code{tissue} column
+(or its alias \code{tissueType}). If \code{tissue_type} is specified, then only
+the cell types in the specified tissue type will be used for annotation.
+If \code{tissue_type} is not specified, then all cell types in the marker
+gene database file will be used for annotation.}
 
 \item{weight_encoding}{How to encoding the weights. By default, plus (+) for a
 positive weight; minus (-) for a negative weight and a star (*) for zero weight.
@@ -97,6 +123,17 @@ Prepare gene sets for hitype
 # If the `nextLevels` of CD4 is `!Naive;!`, then possible final cell names
 # are:
 #   CD4 Memory
+
+# A gene set in the universal marker format:
+markers <- data.frame(
+    cell_type = c("CD4", "CD4", "CD8", "CD8", "CD8"),
+    gene = c("CD4", "IL7R", "CD8A", "CD8B", "GZMB"),
+    direction = c("positive", "positive", "positive", "positive", "negative"),
+    weight = c(2, 1, 3, 1, 1)
+)
+gs <- gs_prepare(markers)
+gs$gene_sets[[1]]$CD4
+gs$gene_sets[[1]]$CD8
 
 }
 \author{

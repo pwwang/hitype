@@ -1,6 +1,6 @@
 Package: hitype
 Title: Hierarchical and high-resolution cell-type identification for single-cell RNA-seq data based on ScType
-Version: 0.0.5
+Version: 0.0.6
 Authors@R:
     person("Panwen", "Wang", , "pwwang@pwwang.com", role = c("aut", "cre"),
            comment = c(ORCID = "YOUR-ORCID-ID"))
@@ -25,6 +25,8 @@ Suggests:
     keras (>= 2.11.0),
     knitr,
     presto,
+    qs,
+    qs2,
     ranger,
     rmarkdown,
     SeuratData,

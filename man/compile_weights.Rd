@@ -4,7 +4,7 @@
 \alias{compile_weights}
 \title{Compile the weights}
 \usage{
-compile_weights(weights, gs, level, range)
+compile_weights(weights, gs, level, range, format = c("universal", "db"))
 }
 \arguments{
 \item{weights}{A data frame with the weights}
@@ -14,9 +14,14 @@ compile_weights(weights, gs, level, range)
 \item{level}{The level of the gene sets}
 
 \item{range}{The range of the weights}
+
+\item{format}{The format of the output data frame. One of
+\code{"universal"} (default) or \code{"db"}.}
 }
 \value{
-A data frame as the db
+A data frame with the compiled weights in the universal marker
+format (default) or the db format (\code{format = "db"}), consumable by
+\code{\link[=gs_prepare]{gs_prepare()}}.
 }
 \description{
 Compile the weights

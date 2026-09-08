@@ -34,7 +34,7 @@ for (ct in names(known)) {
 exprs <- log1p(counts)
 
 test_that("find_markers() fc returns db-format data.frame", {
-    res <- find_markers(exprs, clusters, method = "fc", top = 8)
+    res <- find_markers(exprs, clusters, method = "fc", top = 8, format = "db")
     expect_equal(
         colnames(res),
         c("cellName", "geneSymbolmore1", "geneSymbolmore2", "level")
@@ -46,7 +46,7 @@ test_that("find_markers() fc returns db-format data.frame", {
 })
 
 test_that("find_markers() fc recovers known over-expressed markers", {
-    res <- find_markers(exprs, clusters, method = "fc", top = 8)
+    res <- find_markers(exprs, clusters, method = "fc", top = 8, format = "db")
     for (ct in names(known)) {
         markers <- strsplit(
             res$geneSymbolmore1[res$cellName == ct], ","
@@ -58,7 +58,8 @@ test_that("find_markers() fc recovers known over-expressed markers", {
 
 test_that("find_markers() include_negative fills geneSymbolmore2", {
     res <- find_markers(
-        exprs, clusters, method = "fc", top = 8, include_negative = TRUE
+        exprs, clusters, method = "fc", top = 8, include_negative = TRUE,
+        format = "db"
     )
     expect_false(all(res$geneSymbolmore2 == ""))
     expect_gte(sum(res$geneSymbolmore2 != ""), 2)
@@ -79,7 +80,8 @@ test_that("find_markers() validates inputs", {
     mono_cells <- names(two_cell)[two_cell == "Monocyte"]
     two_cell[mono_cells[seq_len(2)]] <- "Rare"
     expect_warning(
-        res <- find_markers(exprs, two_cell, method = "fc", top = 8),
+        res <- find_markers(exprs, two_cell, method = "fc", top = 8,
+            format = "db"),
         "fewer than 3 cells"
     )
     expect_false("Rare" %in% res$cellName)
@@ -103,8 +105,12 @@ test_that("find_markers() validates inputs", {
 
 test_that("find_markers() fc works on a dgCMatrix", {
     sparse_exprs <- Matrix::Matrix(exprs, sparse = TRUE)
-    res_sparse <- find_markers(sparse_exprs, clusters, method = "fc", top = 8)
-    res_dense <- find_markers(exprs, clusters, method = "fc", top = 8)
+    res_sparse <- find_markers(
+        sparse_exprs, clusters, method = "fc", top = 8, format = "db"
+    )
+    res_dense <- find_markers(
+        exprs, clusters, method = "fc", top = 8, format = "db"
+    )
     expect_equal(res_sparse, res_dense)
     tcell_markers <- strsplit(
         res_sparse$geneSymbolmore1[res_sparse$cellName == "Tcell"], ","
@@ -126,7 +132,7 @@ test_that("find_markers() method seurat works on a Seurat object", {
                 unname(clusters),
                 levels = c("Tcell", "Bcell", "Monocyte")
             )
-            find_markers(obj, method = "seurat", top = 5)
+            find_markers(obj, method = "seurat", top = 5, format = "db")
         },
         error = function(e) {
             skip(paste0(
@@ -144,7 +150,8 @@ test_that("find_markers() method seurat works on a Seurat object", {
 
 test_that("find_markers() method presto works", {
     skip_if_not_installed("presto")
-    res <- find_markers(exprs, clusters, method = "presto", top = 8)
+    res <- find_markers(exprs, clusters, method = "presto", top = 8,
+        format = "db")
     expect_equal(
         colnames(res),
         c("cellName", "geneSymbolmore1", "geneSymbolmore2", "level")
@@ -159,4 +166,58 @@ test_that("find_markers() method presto works", {
     # strongest known markers (CD3E, CCR7). Ranking is by
     # logFC * (pct_in - pct_out), consistent with the fc backend.
     expect_gte(length(intersect(known$Tcell, tcell_markers)), 2)
+})
+
+test_that("find_markers() defaults to the universal marker format", {
+    res <- find_markers(exprs, clusters, method = "fc", top = 8)
+    expect_equal(
+        colnames(res),
+        c("cell_type", "gene", "direction", "level")
+    )
+    expect_gt(nrow(res), 3)  # one row per cell_type-gene pair
+    expect_true(all(res$direction == "positive"))
+    expect_equal(res$level, rep(1L, nrow(res)))
+    expect_true(all(!is.na(res$cell_type) & !is.na(res$gene)))
+    # Positive markers of each cell type are preserved
+    for (ct in names(known)) {
+        genes <- res$gene[res$cell_type == ct]
+        expect_gte(length(intersect(known[[ct]], genes)), 4)
+    }
+})
+
+test_that("find_markers() universal format carries negative markers", {
+    res <- find_markers(
+        exprs, clusters, method = "fc", top = 8, include_negative = TRUE
+    )
+    expect_true(any(res$direction == "negative"))
+    expect_true(any(res$direction == "positive"))
+    # Every cell type keeps its positive markers
+    for (ct in names(known)) {
+        genes <- res$gene[res$cell_type == ct & res$direction == "positive"]
+        expect_gte(length(genes), 1)
+    }
+})
+
+test_that("find_markers() universal output round-trips through gs_prepare", {
+    res <- find_markers(
+        exprs, clusters, method = "fc", top = 8, include_negative = TRUE
+    )
+    gs <- gs_prepare(res)
+    expect_null(gs$cell_names)
+    for (ct in c("Tcell", "Bcell", "Monocyte")) {
+        markers <- gs$gene_sets[[1]][[ct]]$markers
+        weights <- gs$gene_sets[[1]][[ct]]$weights
+        names(weights) <- markers
+        pos <- res$gene[res$cell_type == ct & res$direction == "positive"]
+        neg <- res$gene[res$cell_type == ct & res$direction == "negative"]
+        expect_true(all(weights[pos] == 1))
+        expect_true(all(weights[neg] == -1))
+    }
+})
+
+test_that("find_markers() validates format", {
+    expect_error(
+        find_markers(exprs, clusters, method = "fc", format = "wide"),
+        "arg"
+    )
 })
