@@ -4,7 +4,7 @@
 \alias{hitype_score}
 \title{Calculate cell type scores}
 \usage{
-hitype_score(exprs, gs, scaled = FALSE)
+hitype_score(exprs, gs, scaled = FALSE, norm = "sqrt", use_sensitivity = TRUE)
 }
 \arguments{
 \item{exprs}{Input scRNA-seq data matrix
@@ -14,6 +14,14 @@ hitype_score(exprs, gs, scaled = FALSE)
 The \code{gene_sets} is used. One could also pass \code{gs$gene_sets} directly.}
 
 \item{scaled}{Whether the input data is scaled or not}
+
+\item{norm}{Normalization method for scoring. \code{"sqrt"} (default)
+divides by \code{sqrt(n)}; \code{"weight"} divides by
+\code{sum(abs(weights))}.}
+
+\item{use_sensitivity}{Whether to multiply expression z-scores by
+marker sensitivity scores. Set to \code{FALSE} when using learned
+weights to avoid double-penalizing shared markers. Default is \code{TRUE}.}
 }
 \value{
 A list of matrices of cell type scores for each level

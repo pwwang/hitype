@@ -3,6 +3,8 @@
 #' Calculate cell type scores
 #'
 #' @importFrom dplyr %>%
+#' @importFrom stats na.omit
+#' @importFrom utils head
 #'
 #' @author Matt Mulvahill, Panwen Wang
 #'
@@ -11,11 +13,18 @@
 #' @param gs The gene sets prepared by \code{\link{gs_prepare}}
 #'  The `gene_sets` is used. One could also pass `gs$gene_sets` directly.
 #' @param scaled Whether the input data is scaled or not
+#' @param norm Normalization method for scoring. \code{"sqrt"} (default)
+#'  divides by \code{sqrt(n)}; \code{"weight"} divides by
+#'  \code{sum(abs(weights))}.
+#' @param use_sensitivity Whether to multiply expression z-scores by
+#'  marker sensitivity scores. Set to \code{FALSE} when using learned
+#'  weights to avoid double-penalizing shared markers. Default is \code{TRUE}.
 #'
 #' @return A list of matrices of cell type scores for each level
 #'  (rownames - cell types, colnames - cell names)
 #' @export
-hitype_score <- function(exprs, gs, scaled = FALSE) {
+hitype_score <- function(exprs, gs, scaled = FALSE, norm = "sqrt",
+                        use_sensitivity = TRUE) {
     # Check input
     if (is.data.frame(exprs)) {
         exprs <- as.matrix(exprs)
@@ -123,7 +132,7 @@ hitype_score <- function(exprs, gs, scaled = FALSE) {
 
     lapply(
         gs,
-        function(gs_level) hitype_score_level(z, gs_level)
+        function(gs_level) hitype_score_level(z, gs_level, norm, use_sensitivity)
     )
 }
 
@@ -134,10 +143,17 @@ hitype_score <- function(exprs, gs, scaled = FALSE) {
 #' @param z Z-scaled expression matrix
 #'  (rownames - gene names, colnames - cell names)
 #' @param gs_level One level of gene sets prepared by \code{\link{gs_prepare}}
+#' @param norm Normalization method for scoring. \code{"sqrt"} (default)
+#'  divides by \code{sqrt(n)}; \code{"weight"} divides by
+#'  \code{sum(abs(weights))}.
+#' @param use_sensitivity Whether to multiply expression z-scores by
+#'  marker sensitivity scores. Set to \code{FALSE} when using learned
+#'  weights to avoid double-penalizing shared markers. Default is \code{TRUE}.
 #'
 #' @return A matrix of cell type scores for each cell
 #'  (rownames - cell types, colnames - cell names)
-hitype_score_level <- function(z, gs_level) {
+hitype_score_level <- function(z, gs_level, norm = "sqrt",
+                             use_sensitivity = TRUE) {
     # gs_level
     # list(
     #     CD4 = list(
@@ -188,10 +204,10 @@ hitype_score_level <- function(z, gs_level) {
     #         break
     #     }
     # }
-    # if (!has_plus_minus) {
-        # multiple by marker sensitivity
+    # Multiple by marker sensitivity (can be disabled for learned weights)
+    if (use_sensitivity) {
         z <- z * marker_sensitivity$score_marker_sensitivity
-    # }
+    }
 
     gfun <- function(gss_) {
         #       cell1 cell2 cell3
@@ -200,7 +216,13 @@ hitype_score_level <- function(z, gs_level) {
         gs_z <- z[
             gs_level[[gss_]]$markers, , drop = FALSE
         ] * gs_level[[gss_]]$weights
-        colSums(gs_z) / sqrt(nrow(gs_z))
+        if (norm == "weight") {
+            w_sum <- sum(abs(gs_level[[gss_]]$weights))
+            if (w_sum == 0) w_sum <- 1
+            colSums(gs_z) / w_sum
+        } else {
+            colSums(gs_z) / sqrt(nrow(gs_z))
+        }
     }
 
     es = data.frame(t(
@@ -222,43 +244,109 @@ hitype_score_level <- function(z, gs_level) {
 #'
 #' @param clusters A named vector of original cluster assignments
 #'  (names - cell names, values - cluster assignments)
-#' @param scores A list of matrices of cell type scores for each level
-#' @param threshold A threshold for low confidence cell type assignment
-#'  The cell types are only assigned for cells with scores higher than the
-#'  threshold * ncells.
-#'  (0 - 1, default 0.05)
+#' @param scores A matrix of cell type scores (cell_types x cells)
+#' @param threshold Confidence threshold as top1/top2 score ratio.
+#'  When `NULL` (default), no filtering is done.
+#'  When a number, the rank-1 cell type of a cluster is marked as
+#'  `<UNKNOWN>` when its score is less than `threshold` times the
+#'  second-best score.
 #' @param top The number of top cell types to assign for each cluster
-#' @return A data from of top cell type assignments
+#' @param mode `"cluster"` (default) aggregates scores per cluster
+#'  then assigns. `"cell"` assigns each cell individually then
+#'  reports majority vote per cluster.
+#' @return A data from of top cell type assignments with columns:
+#'  Cluster, CellType, Score, Margin
 hitype_assign_level <- function(
     clusters,
     scores,
-    threshold,
-    top = 10
+    threshold = NULL,
+    top = 10,
+    mode = c("cluster", "cell")
 ) {
-    scores <- scales::rescale(as.matrix(scores), to = c(0, 1))
-    x <- do_call(
-        "rbind",
-        lapply(unique(clusters), function(cl) {
-            ncells <- sum(clusters == cl)
-            es_max_cl <- sort(
-                rowSums(
-                    scores[, names(clusters[clusters == cl]), drop = FALSE]
-                ) / ncells,
-                decreasing = TRUE
-            )
-            head(
+    mode <- match.arg(mode)
+    scores <- as.matrix(scores)
+
+    if (mode == "cell") {
+        # Per-cell assignment: top-scoring cell type per cell
+        cell_types <- rownames(scores)
+        cell_assignments <- do_call("rbind", lapply(
+            seq_len(ncol(scores)),
+            function(j) {
+                col <- scores[, j]
+                ord <- order(col, decreasing = TRUE)
                 data.frame(
-                    Cluster = cl,
-                    CellType = names(es_max_cl),
-                    Score = es_max_cl
-                ),
-                top
+                    best = cell_types[ord[1]],
+                    score1 = col[ord[1]],
+                    best2 = cell_types[ord[2]],
+                    score2 = col[ord[2]],
+                    stringsAsFactors = FALSE
+                )
+            }
+        ))
+        cell_assignments$Cluster <- clusters[colnames(scores)]
+        cell_assignments$Margin <- cell_assignments$score1 -
+            cell_assignments$score2
+
+        # Majority vote per cluster
+        x <- do_call("rbind", lapply(unique(clusters), function(cl) {
+            cl_cells <- cell_assignments[
+                cell_assignments$Cluster == cl, , drop = FALSE]
+            ncells <- nrow(cl_cells)
+            type_counts <- sort(table(cl_cells$best), decreasing = TRUE)
+            total_margin <- tapply(cl_cells$Margin,
+                cl_cells$best, sum)
+            data.frame(
+                Cluster = cl,
+                CellType = names(type_counts),
+                Score = as.numeric(type_counts) / ncells,
+                Margin = as.numeric(total_margin[names(type_counts)]),
+                stringsAsFactors = FALSE
             )
-        })
-    )
-    x %>% dplyr::mutate(
-        CellType = dplyr::if_else(Score < threshold, UNKNOWN, CellType)
-    )
+        }))
+    } else {
+        # Cluster mode: mean score per cell type within each cluster
+        x <- do_call(
+            "rbind",
+            lapply(unique(clusters), function(cl) {
+                ncells <- sum(clusters == cl)
+                cl_scores <- rowSums(
+                    scores[, names(clusters[clusters == cl]),
+                           drop = FALSE]
+                ) / ncells
+                ord <- order(cl_scores, decreasing = TRUE)
+                head(
+                    data.frame(
+                        Cluster = cl,
+                        CellType = names(cl_scores)[ord],
+                        Score = cl_scores[ord],
+                        Margin = c(
+                            diff(-cl_scores[ord]),
+                            NA
+                        )[seq_along(ord)],
+                        stringsAsFactors = FALSE
+                    ),
+                    top
+                )
+            })
+        )
+    }
+
+    # Apply threshold as top1/top2 score ratio
+    if (!is.null(threshold) && is.numeric(threshold)) {
+        x <- x %>%
+            dplyr::group_by(Cluster) %>%
+            dplyr::mutate(
+                CellType = dplyr::if_else(
+                    dplyr::row_number() == 1 &
+                        Score < threshold *
+                        dplyr::lead(Score, default = Inf),
+                    UNKNOWN, CellType
+                )
+            ) %>%
+            dplyr::ungroup()
+    }
+
+    x
 }
 
 #' Generate scores for cell types for each level
@@ -270,14 +358,17 @@ hitype_assign_level <- function(
 #'  The `cell_names` is actually used. One could also pass `gs$cell_names`
 #'  directly.
 #' @param fallback A fallback cell type if no cell type is assigned
-#' @param threshold A threshold for low confidence cell type assignment
-#'  The cell types are only assigned for cells with scores higher than the
-#'  threshold * ncells.
-#'  (0 - 1, default 0.05)
+#' @param threshold Confidence threshold as top1/top2 score ratio.
+#'  `NULL` (default) means no confidence filtering.
+#'  A number marks the rank-1 cell type of a cluster as `<UNKNOWN>`
+#'  when its score is less than `threshold` times the second-best score.
 #' @param top The number of top cell types to assign for each cluster in the
 #'  result.
-#' @return A dataframe with columns: `Level`, `Cluster`, `CellType` and `Score`.
-#'  For each level and cluster, the top cell types are returned.
+#' @param mode `"cluster"` (default) aggregates scores per cluster
+#'  then assigns the top cell type. `"cell"` assigns each cell
+#'  individually then reports majority vote per cluster.
+#' @return A dataframe with columns: `Level`, `Cluster`, `CellType`, `Score`,
+#'  and `Margin`. For each level and cluster, the top cell types are returned.
 #'  You can use \code{\link{summary.hitype_result}} to print the combination of
 #'  cell types for each cluster.
 #'
@@ -287,13 +378,17 @@ hitype_assign <- function(
     scores,
     gs = NULL,
     fallback = "Unknown",
-    threshold = 0.05,
-    top = 10
+    threshold = NULL,
+    top = 10,
+    mode = c("cluster", "cell")
 ) {
+    mode <- match.arg(mode)
     if (is.data.frame(scores) || is.matrix(scores)) {
         # to be compatible with sctype
         # Cluster, CellType, Score
-        out <- hitype_assign_level(clusters, scores, threshold, top = top) %>%
+        out <- hitype_assign_level(
+            clusters, scores, threshold, top = top, mode = mode
+        ) %>%
             dplyr::mutate(
                 Level = 1,
                 CellType = dplyr::if_else(
@@ -302,7 +397,7 @@ hitype_assign <- function(
                     CellType
                 )
             ) %>%
-            dplyr::select(Level, Cluster, CellType, Score)
+            dplyr::select(Level, Cluster, CellType, Score, Margin)
     } else {
         if (is.null(gs)) {
             stop("hitype_assign: `gs` is required for multi-level assignment.")
@@ -316,7 +411,7 @@ hitype_assign <- function(
             rbind,
             lapply(seq_along(scores), function(i) {
                 cl_ret <- hitype_assign_level(
-                    clusters, scores[[i]], threshold, top = top
+                    clusters, scores[[i]], threshold, top = top, mode = mode
                 )
                 cl_ret$Level <- i
                 cl_ret
@@ -327,7 +422,7 @@ hitype_assign <- function(
     cluster_order <- suppressWarnings(as.numeric(out$Cluster))
     out <- out[
         order(as.numeric(out$Level), cluster_order, -out$Score),
-        c("Level", "Cluster", "CellType", "Score"),
+        c("Level", "Cluster", "CellType", "Score", "Margin"),
         drop = FALSE
     ]
     rownames(out) <- NULL

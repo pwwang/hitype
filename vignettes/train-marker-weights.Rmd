@@ -14,14 +14,22 @@ knitr::opts_chunk$set(
 )
 ```
 
-You need to install the suggested packages for this vignette:
+You need to install the suggested packages for this vignette. The default
+`method = "glmnet"` requires `glmnet`:
+
+```{r, eval = FALSE}
+install.packages("glmnet")
+devtools::install_github("pwwang/hitype")
+```
+
+Other backends have their own requirements (see `?train_weights`):
+`ranger` (method `rf`), `xgboost` (method `xgb`), and `keras` +
+`innsight` (method `lrp`). For `lrp` you would additionally run:
 
 ```{r, eval = FALSE}
 install.packages("keras")
-devtools::install_github("pwwang/hitype")
-
+install.packages("innsight")
 keras::install_keras()
-torch::install_torch()
 ```
 
 To train the weights for the markers, firstly, we have to have the markers in the original `ScType` format:
@@ -61,20 +69,45 @@ names(new_cluster_ids) <- levels(pbmc)
 pbmc <- Seurat::RenameIdents(pbmc, new_cluster_ids)
 ```
 
-```{r, eval=requireNamespace("keras", quietly = TRUE)}
+Train the weights with the recommended sparse logistic regression
+(`glmnet`) and 5-fold cross-validation. `cv_folds > 1` stratifies the
+training cells by cluster and averages the per-fold weights, making the
+estimated weights stable and less prone to overfitting a single split:
+
+```{r, eval=requireNamespace("glmnet", quietly = TRUE)}
 library(hitype)
 
-weights <- train_weights(path_to_gs = markers, exprs = pbmc)
+weights <- train_weights(
+    path_to_gs = markers,
+    exprs = pbmc,
+    method = "glmnet",
+    cv_folds = 5
+)
 weights
 ```
 
-Use the trained weights on `ifnb` dataset:
+Other methods are available via `method =` (e.g. `method = "lrp"` for
+the deep-learning LRP backend, `method = "uniform"` for the equal-weight
+baseline). For the `lr`, `glmnet`, and `lrp` backends, `cv_folds` is
+used for cross-validation:
+
+```{r, eval=FALSE}
+weights_lr <- train_weights(markers, pbmc, method = "lr", cv_folds = 5)
+weights_lrp <- train_weights(markers, pbmc, method = "lrp", cv_folds = 5)
+```
+
+For a statistically sound evaluation, **do not score the trained weights
+on the same cells used for training.** Either hold out a test split of
+the training dataset, or transfer the weights to another dataset (below).
+
+Use the trained weights on `ifnb` dataset (cross-dataset transfer):
 
 ```{r, eval=requireNamespace("ifnb.SeuratData", quietly = TRUE)}
 suppressPackageStartupMessages(library(Seurat))
 suppressPackageStartupMessages(library(dplyr))
 
 ifnb <- ifnb.SeuratData::ifnb
+ifnb <- Seurat::UpdateSeuratObject(ifnb)
 
 # Keep only the cells that exist in the pbmc dataset
 ifnb <- subset(ifnb, subset = seurat_annotations %in% c(
@@ -87,6 +120,9 @@ ifnb <- subset(ifnb, subset = seurat_annotations %in% c(
   "NK"
 ))
 
+# ifnb ships raw counts in SeuratData — normalize before scoring
+ifnb <- Seurat::NormalizeData(ifnb)
+
 ifnb@meta.data <- ifnb@meta.data %>%
   mutate(seurat_clusters = case_when(
     seurat_annotations == "CD14 Mono" ~ "CD14+ Mono",
@@ -98,9 +134,24 @@ ifnb@meta.data <- ifnb@meta.data %>%
 
 gs <- gs_prepare(weights)
 
-scores <- hitype_score(ifnb@assays$RNA@data, gs)
+scores <- hitype_score(Seurat::GetAssayData(ifnb, layer = "data"), gs,
+                       norm = "weight", use_sensitivity = FALSE)
 
 assigned <- hitype_assign(ifnb$seurat_clusters, scores, gs, threshold = 0.01)
 
 summary(assigned)
 ```
+## Finding markers from your own data
+
+`find_markers()` discovers marker genes from a labeled dataset (e.g.
+`pbmc$seurat_clusters`) and returns them directly in the database format
+consumed by `gs_prepare()`, with dependency-light fold-change (`fc`,
+default), `Seurat`, or `presto` backends:
+
+```{r, eval=FALSE}
+markers <- find_markers(pbmc, clusters = pbmc$seurat_clusters, method = "fc")
+weights <- train_weights(path_to_gs = markers, exprs = pbmc, method = "glmnet")
+gs <- gs_prepare(weights)
+```
+
+See `?find_markers` for details.

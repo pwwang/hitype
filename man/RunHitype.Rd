@@ -14,7 +14,7 @@ RunHitype(object, ...)
   object,
   gs = NULL,
   fallback = "Unknown",
-  threshold = 0.05,
+  threshold = NULL,
   level_weights = function(l) 1/(10^(l - 1)),
   make_unique = FALSE,
   layer = "data",
@@ -26,14 +26,14 @@ RunHitype(object, ...)
 \arguments{
 \item{object}{Seurat object}
 
+\item{...}{Additional arguments passed to the specific method.}
+
 \item{gs}{The gene list prepared by \code{\link{gs_prepare}}}
 
 \item{fallback}{A fallback cell type if no cell type is assigned}
 
-\item{threshold}{A threshold for low confidence cell type assignment
-The cell types are only assigned for cells with scores higher than the
-threshold.
-(0 - 1, default 0.05)}
+\item{threshold}{Confidence threshold as top1/top2 score ratio,
+passed to \code{\link[=hitype_assign]{hitype_assign()}}. \code{NULL} (default) means no filtering.}
 
 \item{level_weights}{The weights for each level of the hierarchy to calculate
 the final cell type score

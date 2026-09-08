@@ -1,4 +1,3 @@
-
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
 # hitype <a href="https://pwwang.github.io/hitype/"><img src="man/figures/logo.png" align="right" height="139" alt="hitype website" /></a>
@@ -15,7 +14,12 @@ single-cell RNA-seq data inspired by
 -   [x] Compatibility with
     [ScType](https://github.com/IanevskiAleksandr/sc-type)
 -   [x] Hierarchical and high-resolution cell-type identification
--   [x] Train weights for your markers with a reference dataset
+-   [x] Learn marker weights from data with 7 methods: `uniform`,
+    `correlation`, `lr`, `glmnet` (default), `rf`, `xgb`, `lrp`
+-   [x] Cross-validated weight training (`cv_folds`) for stable,
+    statistically sound weights
+-   [x] Optional marker-sensitivity weighting and score normalization
+    (`use_sensitivity`, `norm`)
 -   [x] Speed optimization
 -   [x] Support as an R package with unit tests
 
@@ -29,6 +33,10 @@ if (!requireNamespace("devtools", quietly = TRUE)) {
 }
 devtools::install_github("pwwang/hitype")
 ```
+
+Optional packages for the individual weight-learning methods:
+`glmnet` (method `glmnet`), `ranger` (method `rf`), `xgboost` (method
+`xgb`), `keras` + `innsight` (method `lrp`).
 
 ## Quick start
 
@@ -44,6 +52,7 @@ Click to expand
 
 ``` r
 pbmc <- pbmc3k.SeuratData::pbmc3k
+pbmc <- Seurat::UpdateSeuratObject(pbmc)
 pbmc[["percent.mt"]] <- Seurat::PercentageFeatureSet(pbmc, pattern = "^MT-")
 pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
 pbmc <- Seurat::NormalizeData(pbmc)
@@ -52,15 +61,6 @@ pbmc <- Seurat::ScaleData(pbmc, features = rownames(pbmc))
 pbmc <- Seurat::RunPCA(pbmc, features = Seurat::VariableFeatures(object = pbmc))
 pbmc <- Seurat::FindNeighbors(pbmc, dims = 1:10)
 pbmc <- Seurat::FindClusters(pbmc, resolution = 0.5)
-#> Modularity Optimizer version 1.3.0 by Ludo Waltman and Nees Jan van Eck
-#> 
-#> Number of nodes: 2638
-#> Number of edges: 95927
-#> 
-#> Running Louvain algorithm...
-#> Maximum modularity in 10 random starts: 0.8728
-#> Number of communities: 9
-#> Elapsed time: 0 seconds
 pbmc <- Seurat::RunUMAP(pbmc, dims = 1:10)
 ```
 
@@ -71,8 +71,20 @@ pbmc <- Seurat::RunUMAP(pbmc, dims = 1:10)
 ``` r
 library(hitype)
 
+markers <- data.frame(
+    cellName = c(
+        "Naive CD4+ T", "CD14+ Mono", "Memory CD4+", "B",
+        "CD8+ T", "FCFR3A+ Mono", "NK", "DC", "Platelet"
+    ),
+    geneSymbolmore1 = c(
+        "IL7R,CCR7",  "CD14,LYZ", "IL7R,S100A4", "MS4A1",
+        "CD8A", "FCGR3A,MS4A7", "GNLY,NKG7", "FCER1A,CST3", "PPBP"
+    ),
+    geneSymbolmore2 = rep("", 9)
+)
+
 # Load gene sets
-gs <- gs_prepare(hitypedb_pbmc3k)
+gs <- gs_prepare(markers)
 
 # Assign cell types
 obj <- RunHitype(pbmc, gs)
@@ -80,8 +92,6 @@ obj <- RunHitype(pbmc, gs)
 Seurat::DimPlot(obj, group.by = "hitype", label = TRUE, label.box = TRUE) +
   Seurat::NoLegend()
 ```
-
-<img src="man/figures/README-unnamed-chunk-3-1.png" width="75%" />
 
 Compared to the manual marked cell types: <img
 src="https://satijalab.org/seurat/articles/pbmc3k_tutorial_files/figure-html/labelplot-1.png"
@@ -93,21 +103,9 @@ See also
 ### Use as standalone functions
 
 ``` r
-scores <- hitype_score(pbmc@assays$RNA@scale.data, gs, scaled = TRUE)
+scores <- hitype_score(Seurat::GetAssayData(pbmc, layer = "data"), gs)
 cell_types <- hitype_assign(pbmc$seurat_clusters, scores, gs)
 summary(cell_types)
-#> # A tibble: 9 × 4
-#>   Level Cluster CellType     Score
-#>   <int> <fct>   <chr>        <dbl>
-#> 1     1 0       Naive CD4+ T 0.104
-#> 2     1 1       CD14+ Mono   0.162
-#> 3     1 2       Memory CD4+  0.114
-#> 4     1 3       B            0.139
-#> 5     1 4       CD8+ T       0.190
-#> 6     1 5       FCFR3A+ Mono 0.366
-#> 7     1 6       NK           0.256
-#> 8     1 7       DC           0.559
-#> 9     1 8       Platelet     0.973
 ```
 
 You may see that we have exactly the same assignment in the Seurat
@@ -124,6 +122,67 @@ tutorial:
 | 6          | GNLY, NKG7    | NK           |
 | 7          | FCER1A, CST3  | DC           |
 | 8          | PPBP          | Platelet     |
+
+`hitype_score()` accepts log-normalized data by default
+(`scaled = FALSE`; it performs its own z-scoring) or pre-scaled data
+with `scaled = TRUE`. When scoring with learned weights (see below),
+use `norm = "weight", use_sensitivity = FALSE` — this normalizes
+scores by the total marker weight and avoids double-penalizing shared
+markers.
+
+### Train marker weights
+
+`train_weights()` learns per-marker weights from a labeled dataset
+(clusters or cell types) with 7 backends:
+
+| `method`     | Description                                        | Requires        |
+|:-------------|:---------------------------------------------------|:----------------|
+| `uniform`    | Equal weights (baseline)                           | —               |
+| `correlation`| Correlation of each marker with the cluster label  | —               |
+| `lr`         | Logistic regression (one-vs-rest) coefficients     | —               |
+| `glmnet`     | Sparse elastic-net logistic regression (default)   | `glmnet`        |
+| `rf`         | Random forest permutation importance               | `ranger`        |
+| `xgb`        | XGBoost gain-based feature importance              | `xgboost`       |
+| `lrp`        | Neural network + Layer-wise Relevance Propagation  | `keras`, `innsight` |
+
+``` r
+weights <- train_weights(
+    path_to_gs = markers,
+    exprs = pbmc,
+    method = "glmnet",
+    cv_folds = 5
+)
+gs <- gs_prepare(weights)
+```
+
+`cv_folds > 1` performs stratified cross-validation inside the training
+data and averages the weights across folds for stability. **Do not
+evaluate on data used for training** — train the weights on a train
+split and score on a held-out split (or another dataset) to avoid
+optimistic, circular results. See `vignette("train-marker-weights")`
+for a full walkthrough including cross-dataset transfer.
+
+### Find markers from your data
+
+`find_markers()` discovers marker genes from a labeled dataset and
+returns them directly in the database format consumed by `gs_prepare()`.
+The default `method = "fc"` is dependency-light; `"seurat"` and
+`"presto"` backends are also available:
+
+``` r
+markers <- find_markers(
+    exprs = pbmc, clusters = pbmc$seurat_clusters, method = "fc"
+)
+weights <- train_weights(
+    path_to_gs = markers, exprs = pbmc, method = "glmnet"
+)
+gs <- gs_prepare(weights)
+```
+
+**Fair-use warning:** markers and weights derived from the same dataset
+are for exploratory use only. For publications, keep the marker database
+fixed and follow the benchmark protocol (see `paper_plan.md`) to avoid
+circular results.
 
 ## Documentation
 

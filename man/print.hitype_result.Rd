@@ -5,7 +5,7 @@
 \title{Print the summary of the hitype_result object}
 \usage{
 \method{print}{hitype_result}(
-  hitype_res,
+  x,
   top = 1,
   level_weights = function(l) 1/(2^(l - 1)),
   make_unique = FALSE,
@@ -13,6 +13,8 @@
 )
 }
 \arguments{
+\item{x}{A hitype_result object}
+
 \item{top}{The top assigned cell types to return for each cluster}
 
 \item{level_weights}{The weights for each level of the hierarchy to calculate

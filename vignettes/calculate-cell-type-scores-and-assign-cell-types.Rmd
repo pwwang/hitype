@@ -42,8 +42,20 @@ pbmc <- Seurat::RunUMAP(pbmc, dims = 1:10)
 ```{r, warning=FALSE, out.width="75%"}
 library(hitype)
 
+markers <- data.frame(
+    cellName = c(
+        "Naive CD4+ T", "CD14+ Mono", "Memory CD4+", "B",
+        "CD8+ T", "FCFR3A+ Mono", "NK", "DC", "Platelet"
+    ),
+    geneSymbolmore1 = c(
+        "IL7R,CCR7",  "CD14,LYZ", "IL7R,S100A4", "MS4A1",
+        "CD8A", "FCGR3A,MS4A7", "GNLY,NKG7", "FCER1A,CST3", "PPBP"
+    ),
+    geneSymbolmore2 = rep("", 9)
+)
+
 # Load gene sets
-gs <- gs_prepare(hitypedb_pbmc3k)
+gs <- gs_prepare(markers)
 
 # Assign cell types
 obj <- RunHitype(pbmc, gs)
@@ -60,10 +72,33 @@ See also <https://satijalab.org/seurat/articles/pbmc3k_tutorial.html#assigning-c
 
 ## Using `hitype_score` and `hitype_assign` on `Seurat` directly
 
+By default, `hitype_score()` expects log-normalized data
+(`scaled = FALSE`) and performs its own z-scoring. In Seurat v5, access
+the normalized data with `Seurat::GetAssayData(pbmc, layer = "data")`:
+
 ```{r, warning=FALSE}
-scores <- hitype_score(pbmc@assays$RNA@scale.data, gs, scaled = TRUE)
+scores <- hitype_score(Seurat::GetAssayData(pbmc, layer = "data"), gs)
 cell_types <- hitype_assign(pbmc$seurat_clusters, scores, gs)
 summary(cell_types)
+```
+
+If you prefer to pass pre-scaled data (e.g. from a Seurat
+`scale.data` layer), use `scaled = TRUE`:
+
+```{r, warning=FALSE, eval=FALSE}
+scores <- hitype_score(Seurat::GetAssayData(pbmc, layer = "scale.data"),
+                       gs, scaled = TRUE)
+```
+
+When scoring with **learned weights** (see
+`vignette("train-marker-weights")`), use
+`norm = "weight", use_sensitivity = FALSE` so that scores are
+normalized by the total marker weight and shared markers are not
+double-penalized:
+
+```{r, warning=FALSE, eval=FALSE}
+scores <- hitype_score(Seurat::GetAssayData(pbmc, layer = "data"), gs,
+                       norm = "weight", use_sensitivity = FALSE)
 ```
 
 compare to the manual marked cell types:

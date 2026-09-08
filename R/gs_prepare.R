@@ -4,6 +4,9 @@
 #'
 #' @author Matt Mulvahill, Panwen Wang
 #'
+#' @importFrom stats na.omit
+#' @importFrom utils read.table
+#'
 #' @param path_to_db_file A data frame with markers or
 #'   Path to the marker gene database file, it should be
 #'   a tab-delimited text or excel file with the following columns:

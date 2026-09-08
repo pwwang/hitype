@@ -4,3 +4,15 @@ inst/doc
 tests/testthat/pbmc3k.rds
 docs
 nohup.out
+/renv/
+/renv.lock
+/.Rprofile
+.vscode
+Rplots.pdf
+.claude
+.codegraph
+benchmark_datasets.md
+marker_strategy.md
+paper_plan.md
+tool_configs_pbmc3k.md
+debug.ipynb

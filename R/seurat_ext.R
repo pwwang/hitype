@@ -8,10 +8,8 @@
 #' @param object Seurat object
 #' @param gs The gene list prepared by \code{\link{gs_prepare}}
 #' @param fallback A fallback cell type if no cell type is assigned
-#' @param threshold A threshold for low confidence cell type assignment
-#'  The cell types are only assigned for cells with scores higher than the
-#'  threshold.
-#'  (0 - 1, default 0.05)
+#' @param threshold Confidence threshold as top1/top2 score ratio,
+#'  passed to [hitype_assign()]. `NULL` (default) means no filtering.
 #' @param level_weights The weights for each level of the hierarchy to calculate
 #'  the final cell type score
 #'  It should be either a numeric vector of length equal to the number of levels
@@ -22,6 +20,7 @@
 #' @param layer The layer to use for `GetAssayData`
 #' @param assay The assay to use for `GetAssayData`
 #' @param scaled Whether the data from `GetAssayData` is scaled
+#' @param ... Additional arguments passed to the specific method.
 #' @return The Seurat object with the cell types (named `hitype`) added to the
 #'  metadata
 #' @export
@@ -41,7 +40,7 @@ RunHitype.Seurat <- function(
     object,
     gs = NULL,
     fallback = "Unknown",
-    threshold = 0.05,
+    threshold = NULL,
     level_weights = function(l) 1 / (10 ^ (l - 1)),
     make_unique = FALSE,
     layer = "data",

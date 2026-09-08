@@ -4,6 +4,8 @@
 #' @importFrom dplyr group_by
 #' @importFrom dplyr summarise
 #' @importFrom dplyr mutate
+#' @importFrom stats median
+#' @importFrom stats na.omit
 #'
 #' @param path_to_gs Path to the gene set file without weights
 #' @param exprs The expression matrix, or a seurat object
@@ -17,13 +19,33 @@
 #' @param range The range of the weights
 #' @param data_split A vector of fractions for training, validation and
 #'  testing. If only two fractions are provided, no testing set will be used.
-#' @param epochs The number of epochs to train
-#' @param batch_size The batch size
+#' @param epochs The number of epochs to train (lrp method only)
+#' @param batch_size The batch size (lrp method only)
 #' @param run_weights_on_test Whether to run the weights on the test set.
 #'  Requires that `data_split` has three elements.
+#' @param cv_folds Number of cross-validation folds for weight estimation.
+#'  When > 1, weights are averaged across folds for stability.
+#'  Default is 1 (no cross-validation). Used by lr, glmnet, and lrp methods.
+#' @param method The weight learning method. One of:
+#'  \describe{
+#'    \item{"uniform"}{All markers get equal weight (= 1). Fast baseline.}
+#'    \item{"correlation"}{Pearson correlation between each marker and
+#'      the binary cluster indicator. Simple, interpretable.}
+#'    \item{"lr"}{Logistic regression coefficients (one-vs-rest).
+#'      Classic ML approach. Use cv_folds for stability.}
+#'    \item{"glmnet"}{Sparse logistic regression with elastic net penalty
+#'      (alpha = 0.5). Automatically zeros out uninformative markers.
+#'      Recommended for most users. Requires the glmnet package.}
+#'    \item{"rf"}{Random forest permutation importance. Captures non-linear
+#'      marker interactions. Requires the ranger package.}
+#'    \item{"xgb"}{XGBoost gain-based feature importance.
+#'      State-of-the-art tree method. Requires the xgboost package.}
+#'    \item{"lrp"}{Neural network + Layer-wise Relevance Propagation.
+#'      Deep learning approach. Requires the keras and innsight packages.}
+#'  }
 #'
 #' @return A data frame with the weights, that can be used directly by
-#'  \code{\link{gs_prepare}}.
+#'  [gs_prepare()].
 #'
 #' @export
 train_weights <- function(
@@ -36,20 +58,21 @@ train_weights <- function(
     data_split = c(0.7, 0.2, 0.1),
     epochs = 20,
     batch_size = 32,
-    run_weights_on_test = TRUE
+    run_weights_on_test = TRUE,
+    cv_folds = 1,
+    method = c("glmnet", "lr", "rf", "xgb", "lrp", "correlation", "uniform")
 ) {
+    method <- match.arg(method)
     set.seed(1)
+
     data <- prepare_data_for_training(
-        path_to_gs,
-        exprs,
-        level,
-        scaled,
-        clusters
+        path_to_gs, exprs, level, scaled, clusters
     )
 
     clusters <- as.integer(data$clusters)
     uclusters <- unique(clusters)
 
+    # Hold-out test set (used only if data_split has 3 elements)
     test_data_x <- NULL
     test_data_y <- NULL
     if (length(data_split) == 3) {
@@ -62,15 +85,349 @@ train_weights <- function(
         data$z <- data$z[rest_idx, , drop = FALSE]
         clusters <- clusters[rest_idx]
     }
+
+    result <- switch(
+        method,
+        uniform    = train_uniform(data, clusters),
+        correlation = train_correlation(data, clusters),
+        lr         = train_lr(data, clusters, cv_folds),
+        glmnet     = train_glmnet(data, clusters, cv_folds),
+        rf         = train_rf(data, clusters),
+        xgb        = train_xgb(data, clusters),
+        lrp        = train_lrp(
+            data, clusters, uclusters, cv_folds,
+            epochs, batch_size, data_split
+        )
+    )
+
+    weights <- compile_weights(result, data$gs, level, range)
+    if (!is.null(test_data_x) && run_weights_on_test) {
+        run_weights_on_test_data(
+            weights, exprs, clusters, scaled, rownames(test_data_x)
+        )
+    }
+    weights
+}
+
+# ============================================================================
+# Weight-learning methods
+# ============================================================================
+
+#' Uniform weights (baseline)
+#' @keywords internal
+train_uniform <- function(data, clusters) {
+    uctypes <- unique(data$clusters)
+    markers <- colnames(data$z)
+    expand.grid(
+        output_node = uctypes,
+        feature = markers,
+        value = 1,
+        stringsAsFactors = FALSE
+    )
+}
+
+#' Correlation-based weights
+#' @keywords internal
+#' @importFrom stats cor
+train_correlation <- function(data, clusters) {
+    uctypes <- unique(data$clusters)
+    markers <- colnames(data$z)
+    out <- lapply(uctypes, function(ct) {
+        y <- as.numeric(clusters == ct)
+        vals <- apply(data$z, 2, function(x) suppressWarnings(cor(x, y)))
+        vals[is.na(vals)] <- 0
+        data.frame(
+            output_node = ct,
+            feature = markers,
+            value = vals,
+            stringsAsFactors = FALSE
+        )
+    })
+    do.call(rbind, out)
+}
+
+#' Logistic regression weights (one-vs-rest)
+#' @keywords internal
+#' @importFrom stats glm binomial coef
+train_lr <- function(data, clusters, cv_folds = 1) {
+    uctypes <- unique(data$clusters)
+    markers <- colnames(data$z)
+    z <- data$z
+
+    if (cv_folds > 1) {
+        n <- nrow(z)
+        fold <- integer(n)
+        for (ct in clusters) {
+            ct_idx <- which(clusters == ct)
+            fold[ct_idx] <- sample(rep_len(seq_len(cv_folds), length(ct_idx)))
+        }
+        all_coefs <- lapply(uctypes, function(ct) {
+            y <- as.numeric(clusters == ct)
+            fold_coefs <- lapply(seq_len(cv_folds), function(k) {
+                train_idx <- which(fold != k)
+                z_train <- z[train_idx, , drop = FALSE]
+                y_train <- y[train_idx]
+                fit <- suppressWarnings(
+                    glm(y_train ~ ., data = as.data.frame(z_train),
+                        family = binomial())
+                )
+                cf <- coef(fit)[-1]  # drop intercept
+                cf[is.na(cf)] <- 0
+                cf
+            })
+            vals <- Reduce(`+`, fold_coefs) / cv_folds
+            data.frame(
+                output_node = ct,
+                feature = markers,
+                value = vals,
+                stringsAsFactors = FALSE
+            )
+        })
+        return(do.call(rbind, all_coefs))
+    }
+
+    out <- lapply(uctypes, function(ct) {
+        y <- as.numeric(clusters == ct)
+        fit <- suppressWarnings(
+            glm(y ~ ., data = as.data.frame(z), family = binomial())
+        )
+        vals <- coef(fit)[-1]
+        vals[is.na(vals)] <- 0
+        data.frame(
+            output_node = ct,
+            feature = markers,
+            value = vals,
+            stringsAsFactors = FALSE
+        )
+    })
+    do.call(rbind, out)
+}
+
+#' Sparse logistic regression weights (glmnet)
+#' @keywords internal
+train_glmnet <- function(data, clusters, cv_folds = 5) {
+    if (!requireNamespace("glmnet", quietly = TRUE)) {
+        stop("Package 'glmnet' is required for method='glmnet'. ",
+             "Install with: install.packages('glmnet')")
+    }
+    uctypes <- unique(data$clusters)
+    markers <- colnames(data$z)
+    z <- data$z
+
+    if (cv_folds > 1) {
+        n <- nrow(z)
+        fold <- integer(n)
+        for (ct_val in clusters) {
+            ct_idx <- which(clusters == ct_val)
+            fold[ct_idx] <- sample(
+                rep_len(seq_len(cv_folds), length(ct_idx))
+            )
+        }
+        all_coefs <- lapply(uctypes, function(ct) {
+            y <- as.numeric(clusters == ct)
+            fold_coefs <- lapply(seq_len(cv_folds), function(k) {
+                train_idx <- which(fold != k)
+                z_train <- as.matrix(z[train_idx, , drop = FALSE])
+                y_train <- y[train_idx]
+                fit <- tryCatch(
+                    glmnet::cv.glmnet(
+                        z_train, y_train,
+                        family = "binomial", alpha = 0.5
+                    ),
+                    error = function(e) NULL
+                )
+                if (is.null(fit)) {
+                    return(setNames(rep(0, length(markers)), markers))
+                }
+                lam <- if (inherits(fit, "cv.glmnet")) fit$lambda.1se
+                       else median(fit$lambda)
+                cf <- as.numeric(coef(fit, s = lam))[-1]
+                cf[is.na(cf)] <- 0
+                cf
+            })
+            vals <- Reduce(`+`, fold_coefs) / cv_folds
+            data.frame(
+                output_node = ct,
+                feature = markers,
+                value = vals,
+                stringsAsFactors = FALSE
+            )
+        })
+        return(do.call(rbind, all_coefs))
+    }
+
+    out <- lapply(uctypes, function(ct) {
+        y <- as.numeric(clusters == ct)
+        zm <- as.matrix(z)
+        fit <- tryCatch(
+            glmnet::cv.glmnet(
+                zm, y, family = "binomial", alpha = 0.5
+            ),
+            error = function(e) NULL
+        )
+        if (is.null(fit)) {
+            vals <- rep(0, length(markers))
+        } else {
+            lam <- if (inherits(fit, "cv.glmnet")) fit$lambda.1se
+                   else median(fit$lambda)
+            vals <- as.numeric(coef(fit, s = lam))[-1]
+        }
+        vals[is.na(vals)] <- 0
+        data.frame(
+            output_node = ct,
+            feature = markers,
+            value = vals,
+            stringsAsFactors = FALSE
+        )
+    })
+    do.call(rbind, out)
+}
+
+#' Random forest permutation importance weights
+#' @keywords internal
+train_rf <- function(data, clusters) {
+    if (!requireNamespace("ranger", quietly = TRUE)) {
+        stop("Package 'ranger' is required for method='rf'. ",
+             "Install with: install.packages('ranger')")
+    }
+    uctypes <- unique(data$clusters)
+    markers <- colnames(data$z)
+    zdf <- as.data.frame(data$z)
+    zdf$cluster <- factor(clusters)
+
+    fit <- ranger::ranger(
+        cluster ~ ., data = zdf,
+        importance = "permutation",
+        num.trees = 500
+    )
+    imp <- ranger::importance(fit)
+    imp[is.na(imp)] <- 0
+
+    out <- lapply(uctypes, function(ct) {
+        # Overall importance — same values for all cell types
+        data.frame(
+            output_node = ct,
+            feature = markers,
+            value = imp,
+            stringsAsFactors = FALSE
+        )
+    })
+    do.call(rbind, out)
+}
+
+#' XGBoost gain-based importance weights
+#' @keywords internal
+train_xgb <- function(data, clusters) {
+    if (!requireNamespace("xgboost", quietly = TRUE)) {
+        stop("Package 'xgboost' is required for method='xgb'. ",
+             "Install with: install.packages('xgboost')")
+    }
+    uctypes <- unique(data$clusters)
+    markers <- colnames(data$z)
+    uclusters_int <- as.integer(factor(clusters)) - 1  # 0-based
+    n_classes <- length(uctypes)
+
+    dtrain <- xgboost::xgb.DMatrix(
+        data = as.matrix(data$z),
+        label = uclusters_int
+    )
+    params <- list(
+        objective = "multi:softprob",
+        num_class = n_classes,
+        max_depth = 6,
+        eta = 0.3,
+        nthread = 1,
+        verbosity = 0
+    )
+    fit <- xgboost::xgb.train(
+        params = params, data = dtrain, nrounds = 50
+    )
+    imp <- xgboost::xgb.importance(
+        feature_names = markers, model = fit
+    )
+    # Build complete matrix: all features × all cell types
+    imp_vec <- setNames(rep(0, length(markers)), markers)
+    imp_vec[imp$Feature] <- imp$Gain
+    imp_vec[is.na(imp_vec)] <- 0
+
+    out <- lapply(uctypes, function(ct) {
+        data.frame(
+            output_node = ct,
+            feature = markers,
+            value = imp_vec,
+            stringsAsFactors = FALSE
+        )
+    })
+    do.call(rbind, out)
+}
+
+#' LRP-based weights (neural network)
+#' @keywords internal
+train_lrp <- function(
+    data, clusters, uclusters, cv_folds,
+    epochs, batch_size, data_split
+) {
+    if (!requireNamespace("keras", quietly = TRUE)) {
+        stop("Package 'keras' is required for method='lrp'. ",
+             "Install with: install.packages('keras'); ",
+             "keras::install_keras()")
+    }
+    if (!requireNamespace("innsight", quietly = TRUE)) {
+        stop("Package 'innsight' is required for method='lrp'. ",
+             "Install with: install.packages('innsight')")
+    }
+
+    if (cv_folds > 1) {
+        cv_clusters <- clusters
+        n_cv <- nrow(data$z)
+        fold <- integer(n_cv)
+        for (ct in uclusters) {
+            ct_idx <- which(cv_clusters == ct)
+            fold[ct_idx] <- sample(rep_len(seq_len(cv_folds), length(ct_idx)))
+        }
+        all_results <- list()
+        for (k in seq_len(cv_folds)) {
+            cat(sprintf("CV fold %d/%d\n", k, cv_folds))
+            train_idx <- which(fold != k)
+            test_fold_idx <- which(fold == k)
+            all_results[[k]] <- train_lrp_single(
+                data$z, cv_clusters, uclusters,
+                train_idx, test_fold_idx,
+                epochs, batch_size, data_split
+            )
+        }
+        result <- do.call(rbind, all_results)
+        result <- result %>%
+            group_by(output_node, feature) %>%
+            summarise(value = mean(value), .groups = "drop")
+    } else {
+        result <- train_lrp_single(
+            data$z, clusters, uclusters,
+            seq_len(nrow(data$z)), seq_len(nrow(data$z)),
+            epochs, batch_size, data_split
+        )
+    }
+    result
+}
+
+#' Train a single LRP model (helper)
+#' @keywords internal
+train_lrp_single <- function(
+    z, clusters, uclusters,
+    train_idx, test_idx,
+    epochs, batch_size, data_split
+) {
     model <- keras::keras_model_sequential() %>%
-        keras::layer_masking(mask_value = 0, input_shape = ncol(data$z)) %>%
         keras::layer_dense(
-            units = 64, activation = "relu", input_shape = ncol(data$z)
+            units = 64, activation = "relu",
+            input_shape = ncol(z)
         ) %>%
         keras::layer_dropout(rate = 0.2) %>%
         keras::layer_dense(units = 64, activation = "relu") %>%
         keras::layer_dropout(rate = 0.2) %>%
-        keras::layer_dense(units = length(uclusters), activation = "softmax")
+        keras::layer_dense(
+            units = length(uclusters), activation = "softmax"
+        )
 
     model %>% keras::compile(
         loss = "categorical_crossentropy",
@@ -78,48 +435,30 @@ train_weights <- function(
         metrics = c("accuracy")
     )
     model %>% keras::fit(
-        x = data$z,
-        y = keras::to_categorical(clusters - 1, num_classes = length(uclusters)),
+        x = z[train_idx, , drop = FALSE],
+        y = keras::to_categorical(
+            clusters[train_idx] - 1,
+            num_classes = length(uclusters)
+        ),
         epochs = epochs,
         batch_size = batch_size,
-        validation_split = data_split[2] / (data_split[1] + data_split[2]),
+        validation_split = if (length(data_split) >= 2)
+            data_split[2] / (data_split[1] + data_split[2]) else 0.2,
         verbose = 1
     )
 
-    if (!is.null(test_data_x)) {
-        cat("Evaluating on test data\n")
-        test_data_y <- keras::to_categorical(
-            test_data_y - 1,
-            num_classes = length(uclusters)
-        )
-        model %>% keras::evaluate(
-            x = test_data_x,
-            y = test_data_y,
-            batch_size = batch_size,
-            verbose = 1
-        )
-    }
-
     convt <- innsight::Converter$new(
         model,
-        input_names = colnames(data$z),
-        output_names = unique(data$clusters)
+        input_names = colnames(z),
+        output_names = uclusters
     )
-    method <- innsight::LRP$new(convt, data$z)
-    result <- method$get_result(type = "data.frame")
-
-    weights <- compile_weights(result, data$gs, level, range)
-    if (!is.null(test_data_x) && run_weights_on_test) {
-        run_weights_on_test_data(
-            weights,
-            exprs,
-            clusters,
-            scaled,
-            rownames(test_data_x)
-        )
-    }
-    weights
+    method <- innsight::LRP$new(convt, z[test_idx, , drop = FALSE])
+    method$get_result(type = "data.frame")
 }
+
+# ============================================================================
+# Old code — kept as comment for reference
+# ============================================================================
 
 # #' Train weights for the markers using multinomial logistic regression
 # #'
@@ -142,7 +481,7 @@ train_weights <- function(
 # #'  Requires that `data_split` has 2 elements.
 # #'
 # #' @return A data frame with the weights, that can be used directly by
-# #'  \code{\link{gs_prepare}}.
+# #'  \\code{\\link{gs_prepare}}.
 # #'
 # #' @export
 # train_weights_mlr <- function(
@@ -163,10 +502,10 @@ train_weights <- function(
 #         scaled,
 #         clusters
 #     )
-
+#
 #     z <- data$z
 #     z$cluster <- clusters[rownames(z)]
-
+#
 #     test_data <- NULL
 #     if (length(data_split) == 2) {
 #         test_idx <- sample(
@@ -177,7 +516,7 @@ train_weights <- function(
 #         z <- z[rest_idx, , drop = FALSE]
 #         clusters <- clusters[rest_idx]
 #     }
-
+#
 #     model <- multinom(cluster ~ ., data = z)
 #     result <- summary(model)$coefficients
 #     result <- as.data.frame(result[, -1, drop = FALSE])
@@ -188,7 +527,7 @@ train_weights <- function(
 #             names_to = "feature",
 #             values_to = "value"
 #         )
-
+#
 #     weights <- compile_weights(result, data$gs, level, range)
 #     if (!is.null(test_data) && run_weights_on_test) {
 #         run_weights_on_test_data(
@@ -201,6 +540,10 @@ train_weights <- function(
 #     }
 #     weights
 # }
+
+# ============================================================================
+# Shared helpers
+# ============================================================================
 
 #' Run compiled weights on test data
 #'
@@ -223,7 +566,7 @@ run_weights_on_test_data <- function(
 ) {
     if ("Seurat" %in% class(exprs)) {
         clusters <- Idents(exprs)
-        exprs <- exprs@assays$RNA@data
+        exprs <- Seurat::GetAssayData(exprs, layer = "data")
         scaled <- FALSE
     }
 
@@ -267,7 +610,7 @@ prepare_data_for_training <- function(
 ) {
     if ("Seurat" %in% class(exprs)) {
         clusters <- Idents(exprs)
-        exprs <- exprs@assays$RNA@data
+        exprs <- Seurat::GetAssayData(exprs, layer = "data")
         scaled <- FALSE
     }
 
@@ -312,17 +655,6 @@ prepare_data_for_training <- function(
     }
     if (!scaled) { exprs <- scale(exprs) }
 
-    mask <- matrix(FALSE, nrow = nrow(exprs), ncol = ncol(exprs))
-    rownames(mask) <- rownames(exprs)
-    colnames(mask) <- colnames(exprs)
-    for (ct in names(gs)) {
-        mask[
-            rownames(mask) %in% names(clusters[clusters == ct]),
-            gs[[ct]]$markers
-        ] <- TRUE
-    }
-    exprs[!mask] <- 0
-    # z : rows: samples, columns: genes
     list(gs = gs, z = exprs, clusters = clusters)
 }
 
@@ -350,9 +682,10 @@ compile_weights <- function(weights, gs, level, range) {
     }
     weights <- weights %>%
         group_by(output_node, feature) %>%
-        summarise(weight = mean(value))
+        summarise(weight = mean(value), .groups = "drop")
     if (length(range) == 2) {
-        weights <- weights %>% mutate(weight = scales::rescale(weight, to = range))
+        weights <- weights %>%
+            mutate(weight = scales::rescale(weight, to = range))
     } else {
         weights$weight[weights$weight > 0] <- scales::rescale(
             weights$weight[weights$weight > 0],
@@ -376,6 +709,7 @@ compile_weights <- function(weights, gs, level, range) {
             "weight",
             drop = TRUE
         ]
+        if (length(weight) == 0) weight <- rep(1, length(markers))
         markers <- sapply(seq_along(markers), function(i) {
             if (weight[i] > 0) {
                 sign <- "+"

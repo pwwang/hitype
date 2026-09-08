@@ -4,13 +4,21 @@
 \alias{hitype_score_level}
 \title{Calculate ScType scores and assign cell types for one level}
 \usage{
-hitype_score_level(z, gs_level)
+hitype_score_level(z, gs_level, norm = "sqrt", use_sensitivity = TRUE)
 }
 \arguments{
 \item{z}{Z-scaled expression matrix
 (rownames - gene names, colnames - cell names)}
 
 \item{gs_level}{One level of gene sets prepared by \code{\link{gs_prepare}}}
+
+\item{norm}{Normalization method for scoring. \code{"sqrt"} (default)
+divides by \code{sqrt(n)}; \code{"weight"} divides by
+\code{sum(abs(weights))}.}
+
+\item{use_sensitivity}{Whether to multiply expression z-scores by
+marker sensitivity scores. Set to \code{FALSE} when using learned
+weights to avoid double-penalizing shared markers. Default is \code{TRUE}.}
 }
 \value{
 A matrix of cell type scores for each cell

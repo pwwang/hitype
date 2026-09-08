@@ -53,21 +53,28 @@ pbmc <- Seurat::RenameIdents(pbmc, new_cluster_ids)
 Use unweighted markers:
 
 ```{r}
-library(hitype)
-
 gs <- gs_prepare(markers)
-scores <- hitype_score(pbmc@assays$RNA@data, gs)
+scores <- hitype_score(Seurat::GetAssayData(pbmc, layer = "data"), gs)
 assigned <- hitype_assign(pbmc$seurat_clusters, scores, gs, threshold = 0.01)
 out <- summary(assigned)
 out$ManualAssignment <- markers$cellName
 out
 ```
 
-Use trained weights:
+Use trained weights (glmnet, 5-fold CV). Note the recommended scoring
+settings for learned weights: `norm = "weight", use_sensitivity = FALSE`:
 
-```{r}
-gs <- gs_prepare(hitypedb_pbmc3k)
-scores <- hitype_score(pbmc@assays$RNA@data, gs)
+```{r, eval=requireNamespace("glmnet", quietly = TRUE)}
+weights <- train_weights(
+    path_to_gs = markers,
+    exprs = pbmc,
+    method = "glmnet",
+    cv_folds = 5
+)
+
+gs <- gs_prepare(weights)
+scores <- hitype_score(Seurat::GetAssayData(pbmc, layer = "data"), gs,
+                       norm = "weight", use_sensitivity = FALSE)
 assigned <- hitype_assign(pbmc$seurat_clusters, scores, gs, threshold = 0.01)
 out <- summary(assigned)
 out$ManualAssignment <- markers$cellName
@@ -94,6 +101,9 @@ ifnb <- subset(ifnb, subset = seurat_annotations %in% c(
   "NK"
 ))
 
+# ifnb ships raw counts in SeuratData — normalize before scoring
+ifnb <- Seurat::NormalizeData(ifnb)
+
 ifnb@meta.data <- ifnb@meta.data %>%
   mutate(seurat_clusters = case_when(
     seurat_annotations == "CD14 Mono" ~ "CD14+ Mono",
@@ -105,19 +115,21 @@ ifnb@meta.data <- ifnb@meta.data %>%
 
 gs <- gs_prepare(markers)
 
-scores <- hitype_score(ifnb@assays$RNA@data, gs)
+scores <- hitype_score(Seurat::GetAssayData(ifnb, layer = "data"), gs)
 
 assigned <- hitype_assign(ifnb$seurat_clusters, scores, gs, threshold = 0.01)
 
 summary(assigned)
 ```
 
-Use trained weights on `ifnb` dataset:
+Use trained weights on `ifnb` dataset (cross-dataset transfer — the
+weights were learned on `pbmc`, never on `ifnb`):
 
-```{r, eval=requireNamespace("ifnb.SeuratData", quietly = TRUE)}
-gs <- gs_prepare(hitypedb_pbmc3k)
+```{r, eval=requireNamespace("glmnet", quietly = TRUE) & requireNamespace("ifnb.SeuratData", quietly = TRUE)}
+gs <- gs_prepare(weights)
 
-scores <- hitype_score(ifnb@assays$RNA@data, gs)
+scores <- hitype_score(Seurat::GetAssayData(ifnb, layer = "data"), gs,
+                       norm = "weight", use_sensitivity = FALSE)
 
 assigned <- hitype_assign(ifnb$seurat_clusters, scores, gs, threshold = 0.01)
 

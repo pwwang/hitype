@@ -4,23 +4,35 @@
 \alias{hitype_assign_level}
 \title{Assign cell types based on ScType scores}
 \usage{
-hitype_assign_level(clusters, scores, threshold, top = 10)
+hitype_assign_level(
+  clusters,
+  scores,
+  threshold = NULL,
+  top = 10,
+  mode = c("cluster", "cell")
+)
 }
 \arguments{
 \item{clusters}{A named vector of original cluster assignments
 (names - cell names, values - cluster assignments)}
 
-\item{scores}{A list of matrices of cell type scores for each level}
+\item{scores}{A matrix of cell type scores (cell_types x cells)}
 
-\item{threshold}{A threshold for low confidence cell type assignment
-The cell types are only assigned for cells with scores higher than the
-threshold * ncells.
-(0 - 1, default 0.05)}
+\item{threshold}{Confidence threshold as top1/top2 score ratio.
+When \code{NULL} (default), no filtering is done.
+When a number, the rank-1 cell type of a cluster is marked as
+\verb{<UNKNOWN>} when its score is less than \code{threshold} times the
+second-best score.}
 
 \item{top}{The number of top cell types to assign for each cluster}
+
+\item{mode}{\code{"cluster"} (default) aggregates scores per cluster
+then assigns. \code{"cell"} assigns each cell individually then
+reports majority vote per cluster.}
 }
 \value{
-A data from of top cell type assignments
+A data from of top cell type assignments with columns:
+Cluster, CellType, Score, Margin
 }
 \description{
 Assign cell types based on ScType scores

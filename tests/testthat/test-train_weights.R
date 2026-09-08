@@ -1,4 +1,4 @@
-skip_if_not_installed("keras")
+skip_if_not_installed("glmnet")
 test_that("train_weights() works", {
     path_to_gs <- data.frame(
         cellName = c(

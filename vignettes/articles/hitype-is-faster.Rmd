@@ -38,7 +38,10 @@ gs_list = suppressWarnings(gene_sets_prepare(
 ))
 
 # Gene sets for hitype
-gs = suppressWarnings(gs_prepare(hitypedb_short, "Immune system"))
+gs = suppressWarnings(gs_prepare(
+  "https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/ScTypeDB_short.xlsx",
+  "Immune system"
+))
 
 # Prepare expression matrix for different number of cells
 all_cells <- colnames(scRNAseqData)

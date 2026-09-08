@@ -9,8 +9,9 @@ hitype_assign(
   scores,
   gs = NULL,
   fallback = "Unknown",
-  threshold = 0.05,
-  top = 10
+  threshold = NULL,
+  top = 10,
+  mode = c("cluster", "cell")
 )
 }
 \arguments{
@@ -25,17 +26,21 @@ directly.}
 
 \item{fallback}{A fallback cell type if no cell type is assigned}
 
-\item{threshold}{A threshold for low confidence cell type assignment
-The cell types are only assigned for cells with scores higher than the
-threshold * ncells.
-(0 - 1, default 0.05)}
+\item{threshold}{Confidence threshold as top1/top2 score ratio.
+\code{NULL} (default) means no confidence filtering.
+A number marks the rank-1 cell type of a cluster as \verb{<UNKNOWN>}
+when its score is less than \code{threshold} times the second-best score.}
 
 \item{top}{The number of top cell types to assign for each cluster in the
 result.}
+
+\item{mode}{\code{"cluster"} (default) aggregates scores per cluster
+then assigns the top cell type. \code{"cell"} assigns each cell
+individually then reports majority vote per cluster.}
 }
 \value{
-A dataframe with columns: \code{Level}, \code{Cluster}, \code{CellType} and \code{Score}.
-For each level and cluster, the top cell types are returned.
+A dataframe with columns: \code{Level}, \code{Cluster}, \code{CellType}, \code{Score},
+and \code{Margin}. For each level and cluster, the top cell types are returned.
 You can use \code{\link{summary.hitype_result}} to print the combination of
 cell types for each cluster.
 }

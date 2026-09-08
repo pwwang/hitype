@@ -31,35 +31,6 @@ gs$gene_sets[[1]]$`Acinar cells`
 # )
 ```
 
-These two gene sets are now also built into `hitype`:
-
-```{r}
-# gs <- gs_prepare(hitypedb_short)
-# gs <- gs_prepare(hitypedb_full)
-```
-
-## Built-in gene sets
-
-`hitype` also provides some built-in gene sets:
-
-### Gene sets from ScType_short
-
-```{r}
-head(hitypedb_short)
-```
-
-### Gene sets from ScType_full
-
-```{r}
-head(hitypedb_full)
-```
-
-### Gene sets and weights trained from PBMC 3k dataset
-
-```{r}
-hitypedb_pbmc3k
-```
-
 ## Preparing your own gene sets
 
 You can also prepare your own gene sets. The gene sets should be a `data.frame` or a tab-delimited file with the following columns:
@@ -77,5 +48,16 @@ You can also prepare your own gene sets. The gene sets should be a `data.frame` 
   - `!` can be used to indicate that the `cellName`s at the next level should be excluded. For example, `!Naive` indicates that `Naive` should be excluded from the `cellName`s at the next level.
   - If `!` is the only character in a level, then all `cellName`s at that level will be excluded.
 
+Any `data.frame` of markers (e.g. the output of `train_weights()`) can
+be passed directly to `gs_prepare()`:
+
+```{r}
+markers <- data.frame(
+    cellName = c("CD4 T", "CD8 T"),
+    geneSymbolmore1 = c("CD3E,CD4,IL7R", "CD3E,CD8A,CD8B"),
+    geneSymbolmore2 = c("", "")
+)
+gs <- gs_prepare(markers)
+```
 
 [1]: https://github.com/IanevskiAleksandr/sc-type

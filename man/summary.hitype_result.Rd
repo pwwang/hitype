@@ -5,13 +5,16 @@
 \title{Summarize the hitype_result object}
 \usage{
 \method{summary}{hitype_result}(
-  hitype_res,
+  object,
   top = 1,
   level_weights = function(l) 1/(2^(l - 1)),
-  make_unique = FALSE
+  make_unique = FALSE,
+  ...
 )
 }
 \arguments{
+\item{object}{A hitype_result object}
+
 \item{top}{The top assigned cell types to return for each cluster}
 
 \item{level_weights}{The weights for each level of the hierarchy to calculate
@@ -22,6 +25,8 @@ It can also be a function that takes the levels as input and returns a
 numeric vectors as the weights.}
 
 \item{make_unique}{Whether to make the cell type names unique}
+
+\item{...}{Additional arguments passed to the specific method.}
 }
 \value{
 The summary of the hitype_result object

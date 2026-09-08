@@ -7,3 +7,6 @@
 ^vignettes/articles$
 ^nohup\.out$
 ^\.github$
+^Makefile$
+^hitype\.Rcheck$
+^hitype_.*\.tar\.gz$

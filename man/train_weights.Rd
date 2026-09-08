@@ -14,7 +14,9 @@ train_weights(
   data_split = c(0.7, 0.2, 0.1),
   epochs = 20,
   batch_size = 32,
-  run_weights_on_test = TRUE
+  run_weights_on_test = TRUE,
+  cv_folds = 1,
+  method = c("glmnet", "lr", "rf", "xgb", "lrp", "correlation", "uniform")
 )
 }
 \arguments{
@@ -37,16 +39,38 @@ taken from the seurat object.}
 \item{data_split}{A vector of fractions for training, validation and
 testing. If only two fractions are provided, no testing set will be used.}
 
-\item{epochs}{The number of epochs to train}
+\item{epochs}{The number of epochs to train (lrp method only)}
 
-\item{batch_size}{The batch size}
+\item{batch_size}{The batch size (lrp method only)}
 
 \item{run_weights_on_test}{Whether to run the weights on the test set.
 Requires that \code{data_split} has three elements.}
+
+\item{cv_folds}{Number of cross-validation folds for weight estimation.
+When > 1, weights are averaged across folds for stability.
+Default is 1 (no cross-validation). Used by lr, glmnet, and lrp methods.}
+
+\item{method}{The weight learning method. One of:
+\describe{
+\item{"uniform"}{All markers get equal weight (= 1). Fast baseline.}
+\item{"correlation"}{Pearson correlation between each marker and
+the binary cluster indicator. Simple, interpretable.}
+\item{"lr"}{Logistic regression coefficients (one-vs-rest).
+Classic ML approach. Use cv_folds for stability.}
+\item{"glmnet"}{Sparse logistic regression with elastic net penalty
+(alpha = 0.5). Automatically zeros out uninformative markers.
+Recommended for most users. Requires the glmnet package.}
+\item{"rf"}{Random forest permutation importance. Captures non-linear
+marker interactions. Requires the ranger package.}
+\item{"xgb"}{XGBoost gain-based feature importance.
+State-of-the-art tree method. Requires the xgboost package.}
+\item{"lrp"}{Neural network + Layer-wise Relevance Propagation.
+Deep learning approach. Requires the keras and innsight packages.}
+}}
 }
 \value{
 A data frame with the weights, that can be used directly by
-\code{\link{gs_prepare}}.
+\code{\link[=gs_prepare]{gs_prepare()}}.
 }
 \description{
 Train weights for the markers

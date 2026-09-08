@@ -12,6 +12,7 @@ reference:
   - title: Marker weight training
     contents:
       - train_weights
+      - find_markers
   - title: Summarizing Hitype results
     contents:
       - summary.hitype_result

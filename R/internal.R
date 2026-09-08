@@ -1,6 +1,12 @@
 EMPTY <- "<EMPTY>" # nolint
 UNKNOWN <- "<UNKNOWN>" # nolint
 
+# Silences "no visible binding for global variable" NOTEs from dplyr NSE
+utils::globalVariables(c(
+    "CellType", "Cluster", "Score", "Level", "Margin",
+    "output_node", "feature", "value", "weight"
+))
+
 #' Split the string by the separator and trim the whitespaces.
 #'
 #' @keywords internal

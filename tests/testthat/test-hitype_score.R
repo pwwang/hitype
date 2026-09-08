@@ -132,22 +132,28 @@ test_that("hitype_assign_level() works", {
     ))
     colnames(hitype_scores) <- cells
     x <- hitype_assign_level(clusters, hitype_scores, .25)
-    #     Cluster  CellType Scores NCells
-    # CD4        3       CD4   1.64      3
-    # CD8        3 <UNKNOWN>  -1.80      3
-    # CD41       1 <UNKNOWN>  -0.22      3
-    # CD81       1 <UNKNOWN>  -1.53      3
-    # CD42       2       CD4   3.03      4
-    # CD82       2       CD8   2.73      4
+    # Scores are NOT rescaled: they are the raw cluster means, in
+    # `unique(clusters)` order (here c(3, 1, 2)), with the top 2 cell types
+    # per cluster. The 0.25 threshold is a top1/top2 ratio: the rank-1 cell
+    # type of a cluster is marked <UNKNOWN> only when its score is less than
+    # 0.25 * the second-best score (no cluster meets that here, so no
+    # <UNKNOWN>).
+    #   Cluster CellType   Score  Margin
+    #        3       CD4  0.5467  1.1467
+    #        3       CD8 -0.6     NA
+    #        1       CD4 -0.0733   0.4367
+    #        1       CD8 -0.51    NA
+    #        2       CD4  0.7575   0.075
+    #        2       CD8  0.6825  NA
     expect_equal(x$Cluster, c(3, 3, 1, 1, 2, 2))
     expect_equal(
         x$CellType,
-        c("CD4", "<UNKNOWN>", "CD4", "<UNKNOWN>", "CD4", "CD8")
+        c("CD4", "CD8", "CD4", "CD8", "CD4", "CD8")
     )
     expect_equal(
         x$Score,
-        c(0.547, 0.149, 0.332, 0.181, 0.621, 0.595),
-        tolerance = 1e-3
+        c(0.546667, -0.6, -0.073333, -0.51, 0.7575, 0.6825),
+        tolerance = 1e-5
     )
 })
 
@@ -163,9 +169,11 @@ test_that("hitype_assign() works with single data.frame", {
     colnames(hitype_scores) <- cells
     x <- hitype_assign(clusters, hitype_scores)
     x <- summary(x)
+    # Raw cluster means (not rescaled); CD4 ties Treg, and
+    # slice_max(with_ties = FALSE) keeps CD4. Clusters sorted 1, 2, 3.
     expect_equal(x$Cluster, c(1, 2, 3))
     expect_equal(x$CellType, c("CD4", "CD4", "CD4"))
-    expect_equal(x$Score, c(0.332, 0.621, 0.547), tolerance = 1e-3)
+    expect_equal(x$Score, c(-0.073333, 0.7575, 0.546667), tolerance = 1e-5)
 })
 
 test_that("hitype_assign() stops no gs for multi-level hitype_scores", {

@@ -1,7 +1,9 @@
 #' Summarize the hitype_result object
 #'
 #' @importFrom dplyr %>%
+#' @importFrom utils head
 #'
+#' @param object A hitype_result object
 #' @param top The top assigned cell types to return for each cluster
 #' @param level_weights The weights for each level of the hierarchy to calculate
 #'  the final cell type score
@@ -10,19 +12,21 @@
 #'  It can also be a function that takes the levels as input and returns a
 #'  numeric vectors as the weights.
 #' @param make_unique Whether to make the cell type names unique
+#' @param ... Additional arguments passed to the specific method.
 #'
 #' @return The summary of the hitype_result object
 #'
 #' @export
 summary.hitype_result <- function(
-    hitype_res,
+    object,
     top = 1,
     level_weights = function(l) 1 / (2 ^ (l - 1)),
-    make_unique = FALSE
+    make_unique = FALSE,
+    ...
 ) {
-    ulevels <- unique(hitype_res$Level)
+    ulevels <- unique(object$Level)
     if (length(ulevels) == 1) {
-        out <- hitype_res %>%
+        out <- object %>%
             dplyr::group_by(Cluster) %>%
             dplyr::slice_max(Score, n = top, with_ties = FALSE) %>%
             dplyr::ungroup()
@@ -39,10 +43,10 @@ summary.hitype_result <- function(
 
         # Work on each Cluster
         cl_results <- lapply(
-            split(hitype_res, hitype_res$Cluster),
+            split(object, object$Cluster),
             function(cl_ret) {
                 cell_types <- lapply(ulevels, function(l) {
-                    cl_ret[cl_ret$Level == l, "CellType"]
+                    cl_ret[cl_ret$Level == l, "CellType", drop = TRUE]
                 })
                 # Make sure first level listed in order
                 # 1 1 2 2 instead of 1 2 1 2
@@ -54,7 +58,7 @@ summary.hitype_result <- function(
                     # nocov start
                     return(data.frame(
                         Cluster = cl_ret$Cluster[1],
-                        CellType = attr(hitype_res, "fallback"),
+                        CellType = attr(object, "fallback"),
                         Score = NA
                     ))
                     # nocov end
@@ -66,7 +70,8 @@ summary.hitype_result <- function(
                     scores <- cl_ret[cl_ret$Level == ulevels[i], , drop = FALSE]
                     scores <- scores[
                         match(all_types[, i], scores$CellType),
-                        "Score"
+                        "Score",
+                        drop = TRUE
                     ]
                     all_scores <- all_scores + scores * level_weights[i]
                 }
@@ -78,7 +83,7 @@ summary.hitype_result <- function(
                     dplyr::mutate(
                         CellType = valid_cell_type(
                             dplyr::c_across(dplyr::starts_with("Level")),
-                            attr(hitype_res, "gs")
+                            attr(object, "gs")
                         )
                     ) %>%
                     dplyr::ungroup() %>%
@@ -91,7 +96,7 @@ summary.hitype_result <- function(
                     # nocov start
                     return(data.frame(
                         Cluster = cl_ret$Cluster[1],
-                        CellType = attr(hitype_res, "fallback"),
+                        CellType = attr(object, "fallback"),
                         Score = NA
                     ))
                     # nocov end
@@ -111,6 +116,7 @@ summary.hitype_result <- function(
 
 #' Print the summary of the hitype_result object
 #'
+#' @param x A hitype_result object
 #' @param top The top assigned cell types to return for each cluster
 #' @param level_weights The weights for each level of the hierarchy to calculate
 #'  the final cell type score
@@ -125,22 +131,16 @@ summary.hitype_result <- function(
 #'
 #' @export
 print.hitype_result <- function(
-    hitype_res,
+    x,
     top = 1,
     level_weights = function(l) 1 / (2 ^ (l - 1)),
     make_unique = FALSE,
     ...
 ) {
-    # nocov start
-    x <- summary(
-        hitype_res,
-        top = top,
-        level_weights = level_weights,
-        make_unique = make_unique
-    )
-    print(x, ...)
-    invisible(x)
-    # nocov end
+    s <- summary(x, top = top, level_weights = level_weights,
+        make_unique = make_unique)
+    print(s, ...)
+    invisible(s)
 }
 
 #' Get the valid cell type for a given cell type
