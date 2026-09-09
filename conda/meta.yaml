@@ -1,0 +1,43 @@
+package:
+  name: r-hitype
+  version: 0.1.0
+
+source:
+  path: ..
+
+build:
+  number: 1
+  rpaths:
+    - lib/R/lib/
+    - lib/
+
+requirements:
+  host:
+    # Imports
+    - r-base
+    - r-dplyr
+    - r-matrix
+    - r-scales
+    - r-seurat
+    - r-openxlsx
+    - r-hgnchelper
+
+  run:
+    # Imports
+    - r-base
+    - r-dplyr
+    - r-matrix
+    - r-scales
+    - r-seurat
+    - r-openxlsx
+    - r-hgnchelper
+
+test:
+  commands:
+    - $R -e "library('hitype')"
+
+about:
+  home: https://github.com/pwwang/hitype
+  license: GPL-3
+  summary: Hierarchical and high-resolution cell-type identification for single-cell RNA-seq data based on ScType.
+  license_family: GPL
