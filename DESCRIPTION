@@ -5,7 +5,7 @@ Authors@R:
     person("Panwen", "Wang", , "pwwang@pwwang.com", role = c("aut", "cre"),
            comment = c(ORCID = "YOUR-ORCID-ID"))
 Description: Hierarchical and high-resolution cell-type identification for single-cell RNA-seq data based on ScType.
-License: GNU General Public License v3.0
+License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Imports:
@@ -24,11 +24,13 @@ Suggests:
     innsight,
     keras (>= 2.11.0),
     knitr,
+    pbmc3k.SeuratData,
     presto,
     qs2,
     ranger,
     rmarkdown,
     SeuratData,
+    SeuratObject,
     testthat (>= 3.0.0),
     xgboost
 Config/testthat/edition: 3

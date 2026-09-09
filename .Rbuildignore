@@ -10,3 +10,9 @@
 ^Makefile$
 ^hitype\.Rcheck$
 ^hitype_.*\.tar\.gz$
+^benchmark_datasets\.md$
+^debug\.ipynb$
+^logo\.png$
+^marker_strategy\.md$
+^paper_plan\.md$
+^tool_configs_pbmc3k\.md$

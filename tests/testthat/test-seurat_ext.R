@@ -3,7 +3,9 @@ test_that("RunHitype() only works with Seurat object", {
 })
 
 test_that("RunHitype() works", {
-    object <- SeuratObject::pbmc_small
+    skip_if_not_installed("SeuratObject")
+    data("pbmc_small", package = "SeuratObject")
+    object <- pbmc_small
     gs <- gs_prepare(
         data.frame(
             cellName = c(

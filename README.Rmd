@@ -51,7 +51,7 @@ Click to expand
 </summary>
 
 ``` r
-pbmc <- pbmc3k.SeuratData::pbmc3k
+pbmc <- utils::getFromNamespace("pbmc3k", "pbmc3k.SeuratData")
 pbmc <- Seurat::UpdateSeuratObject(pbmc)
 pbmc[["percent.mt"]] <- Seurat::PercentageFeatureSet(pbmc, pattern = "^MT-")
 pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
