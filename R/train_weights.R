@@ -67,6 +67,13 @@
 #'   direction": the marker is absent from the cell type's list. Pass
 #'   `FALSE` to keep every candidate marker (with `format = "db"` they are
 #'   then encoded as `*`).
+#' @param pos_only Whether to keep only the markers with a positive
+#'   trained weight in the output (default `FALSE`). A marker can be trained
+#'   with a negative weight (anti-correlating with the cell type, e.g. by
+#'   the `"correlation"` method); such rows are reported with
+#'   `direction = "negative"` and are dropped when `pos_only = TRUE`,
+#'   so the returned table contains markers overexpressed in each cell type
+#'   only.
 #' @param seed Random seed for reproducibility
 #' @return A data frame with the weights in the universal marker format
 #'  (default) or the db format (`format = "db"`), that can be used directly
@@ -88,6 +95,7 @@ train_weights <- function(
     method = c("glmnet", "lr", "rf", "xgb", "lrp", "correlation", "uniform"),
     format = c("universal", "db"),
     drop_zero = TRUE,
+    pos_only = FALSE,
     seed = 8525
 ) {
     method <- match.arg(method)
@@ -139,7 +147,9 @@ train_weights <- function(
         )
     )
 
-    weights <- compile_weights(result, data$gs, level, range, format, drop_zero)
+    weights <- compile_weights(
+        result, data$gs, level, range, format, drop_zero, pos_only
+    )
     if (!is.null(test_data_x) && run_weights_on_test) {
         run_weights_on_test_data(
             weights, exprs, clusters, scaled, rownames(test_data_x)
@@ -823,13 +833,19 @@ prepare_data_for_training <- function(
 #'   any db quantization) makes zero mean "no direction" — the marker is
 #'   absent from the cell type's list. Pass `FALSE` to keep every candidate
 #'   marker.
+#' @param pos_only Whether to keep only the markers whose trained weight
+#'   is positive in the output (default `FALSE`). A marker trained with a
+#'   negative weight anti-correlates with the cell type and is reported with
+#'   `direction = "negative"`; pass `TRUE` to drop those rows (as well as any
+#'   exactly-zero ones, so `drop_zero` is then redundant) and keep only the
+#'   markers overexpressed in the cell type.
 #'
 #' @return A data frame with the compiled weights in the universal marker
 #'   format (default) or the db format (`format = "db"`), consumable by
 #'   [gs_prepare()].
 compile_weights <- function(
     weights, gs, level, range = c(-5, -1, 1, 5),
-    format = c("universal", "db"), drop_zero = TRUE
+    format = c("universal", "db"), drop_zero = TRUE, pos_only = FALSE
 ) {
     format <- match.arg(format)
     if (format == "universal") {
@@ -863,6 +879,15 @@ compile_weights <- function(
         # negative
         weights <- weights[weights$weight != 0, , drop = FALSE]
     }
+    if (pos_only) {
+        # Keep only the markers whose learned direction is positive: a
+        # negative weight (reported as `direction = "negative"`) or a zero
+        # weight carries no "this marker marks the type" signal
+        weights <- weights[weights$weight > 0, , drop = FALSE]
+        # positive-only subsumes the zero drop, and markers filtered out
+        # here must also drop out of each type's marker list below
+        drop_zero <- TRUE
+    }
 
     if (format == "universal") {
         # Raw weights: no rescaling, the trained coefficients are the
@@ -883,9 +908,13 @@ compile_weights <- function(
                 if (length(markers) == 0) {
                     warning(
                         paste0(
-                            "All markers of cell type '", x, "' have zero or ",
-                            "missing trained weights; the cell type is ",
-                            "dropped from the output"
+                            "All markers of cell type '", x, "' have ",
+                            if (pos_only) {
+                                "no positive trained weight"
+                            } else {
+                                "zero or missing trained weights"
+                            },
+                            "; the cell type is dropped from the output"
                         ),
                         immediate. = TRUE
                     )

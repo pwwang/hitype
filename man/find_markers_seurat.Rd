@@ -10,7 +10,7 @@ find_markers_seurat(
   top,
   min_log2fc,
   min_pct,
-  only_pos,
+  pos_only,
   include_negative
 )
 }

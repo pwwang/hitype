@@ -162,7 +162,7 @@ test_that("find_markers() method presto works", {
     )[[1]]
     # presto's logFC is on a different scale than the fc backend's log2fc
     # (roughly an order of magnitude smaller on this log1p data), so with
-    # only_pos = TRUE the shared min_log2fc = 0.25 filter keeps only the
+    # pos_only = TRUE the shared min_log2fc = 0.25 filter keeps only the
     # strongest known markers (CD3E, CCR7). Ranking is by
     # logFC * (pct_in - pct_out), consistent with the fc backend.
     expect_gte(length(intersect(known$Tcell, tcell_markers)), 2)

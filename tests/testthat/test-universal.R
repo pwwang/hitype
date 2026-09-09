@@ -235,6 +235,18 @@ test_that("compile_weights() universal output keeps raw weights", {
         c(IL7R = 2, CCR7 = -1, S100A4 = 0)
     )
 
+    # pos_only = TRUE keeps the positive markers only: the negative
+    # CCR7 row and the zeroed S100A4 drop out
+    pos <- compile_weights(weights, gs, level = 1, pos_only = TRUE)
+    expect_equal(gs_weights(gs_prepare(pos), 1, "CD4 T"), c(IL7R = 2))
+    expect_equal(
+        gs_weights(gs_prepare(pos), 1, "CD8 T"), c(CD8B = 1, GZMB = 1.5)
+    )
+    # ... also when drop_zero = FALSE (a zero weight is not positive)
+    pos0 <- compile_weights(weights, gs, level = 1,
+        pos_only = TRUE, drop_zero = FALSE)
+    expect_equal(gs_weights(gs_prepare(pos0), 1, "CD4 T"), c(IL7R = 2))
+
     # `range` does not apply to the universal output
     expect_warning(
         compile_weights(weights, gs, level = 1, range = c(-2, 2)),

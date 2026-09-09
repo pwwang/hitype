@@ -11,7 +11,7 @@ find_markers(
   top = 20,
   min_log2fc = 0.25,
   min_pct = 0.1,
-  only_pos = TRUE,
+  pos_only = TRUE,
   include_negative = FALSE,
   level = 1,
   format = c("universal", "db")
@@ -39,12 +39,12 @@ Requires the presto package.}
 \item{top}{Number of markers to return per cell type.}
 
 \item{min_log2fc}{Minimum log2 fold change for a gene to be kept as a
-marker (when \code{only_pos = TRUE}).}
+marker (when \code{pos_only = TRUE}).}
 
 \item{min_pct}{Minimum fraction of cells in the cell type expressing
 the gene.}
 
-\item{only_pos}{Only keep genes that are higher in the cell type than
+\item{pos_only}{Only keep genes that are higher in the cell type than
 in the rest of the cells (positive markers). If \code{FALSE}, all genes
 passing \code{min_pct} are considered, ranked by score.}
 

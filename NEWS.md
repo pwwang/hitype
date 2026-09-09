@@ -1,5 +1,9 @@
 ## Version 0.0.8
 
+- ✨ `train_weights()` (and `compile_weights()`) gain a `pos_only`
+  argument (default `FALSE`): when `TRUE`, markers whose trained weight is
+  not positive are dropped from the output, leaving only the markers
+  overexpressed in each cell type (no `direction = "negative"` rows).
 - 🐛 Fix `train_weights()` silently returning the rescale midpoint as all
   weights when a marker gene has no variance across the cells (e.g. an
   unexpressed gene that still exists in the expression matrix): after

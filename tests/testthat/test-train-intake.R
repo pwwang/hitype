@@ -74,6 +74,28 @@ test_that("end-to-end: pooled type gets output rows, ignored type not", {
     expect_setequal(w$gene[w$cell_type == "CT3"], c("G4", "G5"))
 })
 
+test_that("train_weights(pos_only) keeps the positive markers only", {
+    # G3 is a CT1 marker but expressed in the CT2 cells only: it
+    # anti-correlates with CT1 and is trained with a negative weight
+    expr <- matrix(0.1, nrow = 5, ncol = 12,
+        dimnames = list(paste0("G", 1:5), paste0("c", 1:12)))
+    expr[c("G1", "G2"), 1:6] <- 10   # CT1 markers, expressed in CT1 cells
+    expr["G3", 7:12] <- 10           # CT1 marker expressed in CT2 cells
+    expr[c("G4", "G5"), 7:12] <- 10  # CT2 markers, expressed in CT2 cells
+    clusters <- types_of(c(CT1 = 6, CT2 = 6))
+    w <- train_weights(file_markers, expr, clusters = clusters,
+        method = "correlation", data_split = c(1))
+    # CT1's anti-correlated G3 is reported as negative without the filter
+    expect_true(any(
+        w$direction[w$cell_type == "CT1" & w$gene == "G3"] == "negative"
+    ))
+    wpos <- train_weights(file_markers, expr, clusters = clusters,
+        method = "correlation", data_split = c(1), pos_only = TRUE)
+    expect_true(all(wpos$direction == "positive"))
+    expect_setequal(wpos$gene[wpos$cell_type == "CT1"], c("G1", "G2"))
+    expect_setequal(wpos$gene[wpos$cell_type == "CT2"], c("G4", "G5"))
+})
+
 test_that("data type without file entry nor pooled markers is not trained", {
     clusters <- types_of(c(CT1 = 4, CT2 = 4, CT3 = 4))
     expect_warning(

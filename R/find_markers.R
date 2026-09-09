@@ -26,10 +26,10 @@
 #'  }
 #' @param top Number of markers to return per cell type.
 #' @param min_log2fc Minimum log2 fold change for a gene to be kept as a
-#'  marker (when `only_pos = TRUE`).
+#'  marker (when `pos_only = TRUE`).
 #' @param min_pct Minimum fraction of cells in the cell type expressing
 #'  the gene.
-#' @param only_pos Only keep genes that are higher in the cell type than
+#' @param pos_only Only keep genes that are higher in the cell type than
 #'  in the rest of the cells (positive markers). If `FALSE`, all genes
 #'  passing `min_pct` are considered, ranked by score.
 #' @param include_negative If `TRUE`, also fill the `geneSymbolmore2`
@@ -67,7 +67,7 @@ find_markers <- function(
     top = 20,
     min_log2fc = 0.25,
     min_pct = 0.1,
-    only_pos = TRUE,
+    pos_only = TRUE,
     include_negative = FALSE,
     level = 1,
     format = c("universal", "db")
@@ -169,15 +169,15 @@ find_markers <- function(
         method,
         fc = find_markers_fc(
             exprs, clusters, top, min_log2fc, min_pct,
-            only_pos, include_negative
+            pos_only, include_negative
         ),
         seurat = find_markers_seurat(
             exprs, clusters, top, min_log2fc, min_pct,
-            only_pos, include_negative
+            pos_only, include_negative
         ),
         presto = find_markers_presto(
             exprs, clusters, top, min_log2fc, min_pct,
-            only_pos, include_negative
+            pos_only, include_negative
         )
     )
 
@@ -220,7 +220,7 @@ find_markers_fc <- function(
     top,
     min_log2fc,
     min_pct,
-    only_pos,
+    pos_only,
     include_negative
 ) {
     cts <- as.character(unique(clusters))
@@ -242,7 +242,7 @@ find_markers_fc <- function(
         score <- log2fc * (pct_in - pct_out)
 
         keep <- pct_in >= min_pct
-        if (only_pos) {
+        if (pos_only) {
             keep <- keep & log2fc >= min_log2fc
         }
         idx <- which(keep)
@@ -274,7 +274,7 @@ find_markers_seurat <- function(
     top,
     min_log2fc,
     min_pct,
-    only_pos,
+    pos_only,
     include_negative
 ) {
     if (!inherits(exprs, "Seurat")) {
@@ -287,7 +287,7 @@ find_markers_seurat <- function(
     Seurat::Idents(exprs) <- unname(clusters[colnames(exprs)])
     fam <- Seurat::FindAllMarkers(
         exprs,
-        only.pos = only_pos || include_negative,
+        only.pos = pos_only || include_negative,
         logfc.threshold = min_log2fc,
         min.pct = min_pct
     )
@@ -333,7 +333,7 @@ find_markers_presto <- function(
     top,
     min_log2fc,
     min_pct,
-    only_pos,
+    pos_only,
     include_negative
 ) {
     if (!requireNamespace("presto", quietly = TRUE)) {
@@ -377,7 +377,7 @@ find_markers_presto <- function(
         # Same ranking as find_markers_fc: logFC * (pct_in - pct_out)
         score <- sub$logFC * (pct_in - pct_out)
         keep <- pct_in >= min_pct
-        if (only_pos) {
+        if (pos_only) {
             keep <- keep & sub$logFC >= min_log2fc
         }
         idx <- which(keep)

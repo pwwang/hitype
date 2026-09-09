@@ -25,7 +25,6 @@ Suggests:
     keras (>= 2.11.0),
     knitr,
     presto,
-    qs,
     qs2,
     ranger,
     rmarkdown,

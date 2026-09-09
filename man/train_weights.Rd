@@ -19,6 +19,7 @@ train_weights(
   method = c("glmnet", "lr", "rf", "xgb", "lrp", "correlation", "uniform"),
   format = c("universal", "db"),
   drop_zero = TRUE,
+  pos_only = FALSE,
   seed = 8525
 )
 }
@@ -95,6 +96,14 @@ candidate markers are zeroed. Dropping them makes zero mean "no
 direction": the marker is absent from the cell type's list. Pass
 \code{FALSE} to keep every candidate marker (with \code{format = "db"} they are
 then encoded as \code{*}).}
+
+\item{pos_only}{Whether to keep only the markers with a positive
+trained weight in the output (default \code{FALSE}). A marker can be trained
+with a negative weight (anti-correlating with the cell type, e.g. by
+the \code{"correlation"} method); such rows are reported with
+\code{direction = "negative"} and are dropped when \code{pos_only = TRUE},
+so the returned table contains markers overexpressed in each cell type
+only.}
 
 \item{seed}{Random seed for reproducibility}
 }

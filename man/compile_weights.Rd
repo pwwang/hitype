@@ -10,7 +10,8 @@ compile_weights(
   level,
   range = c(-5, -1, 1, 5),
   format = c("universal", "db"),
-  drop_zero = TRUE
+  drop_zero = TRUE,
+  pos_only = FALSE
 )
 }
 \arguments{
@@ -36,6 +37,13 @@ carries no learned direction for the cell type; dropping them (before
 any db quantization) makes zero mean "no direction" — the marker is
 absent from the cell type's list. Pass \code{FALSE} to keep every candidate
 marker.}
+
+\item{pos_only}{Whether to keep only the markers whose trained weight
+is positive in the output (default \code{FALSE}). A marker trained with a
+negative weight anti-correlates with the cell type and is reported with
+\code{direction = "negative"}; pass \code{TRUE} to drop those rows (as well as any
+exactly-zero ones, so \code{drop_zero} is then redundant) and keep only the
+markers overexpressed in the cell type.}
 }
 \value{
 A data frame with the compiled weights in the universal marker
