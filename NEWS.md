@@ -1,3 +1,12 @@
+## Version 0.1.0
+
+- 🐛 Fix `RunHitype()` with a metadata-column `ident` (cluster-level
+  assignments) assigning every cluster the same arbitrary cell type: the
+  column was taken as an unnamed vector, so `hitype_assign()` could not
+  map the score columns back to cells, every cluster scored all-zero, and
+  the ties collapsed to one cell type. The cluster vector is now named
+  from the cell names (as the `Idents()` branch already was).
+
 ## Version 0.0.8
 
 - ✨ `train_weights()` (and `compile_weights()`) gain a `pos_only`

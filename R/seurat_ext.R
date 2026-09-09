@@ -66,7 +66,10 @@ RunHitype.Seurat <- function(
     } else if (identical(ident, "ident")) {
         clusters <- Seurat::Idents(object)
     } else if (is.character(ident) && length(ident) == 1 && ident %in% colnames(object@meta.data)) {
+        # hitype_assign() maps score columns to cells by the cluster names,
+        # so the vector must be named (as the Idents branch above is)
         clusters <- object@meta.data[[ident]]
+        names(clusters) <- colnames(object)
     } else {
         stop("Invalid ident argument. It should be NULL, 'ident', or a character string corresponding to a column in the metadata.")
     }
