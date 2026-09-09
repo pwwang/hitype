@@ -2,11 +2,20 @@
 % Please edit documentation in R/find_markers.R
 \name{find_markers_seurat}
 \alias{find_markers_seurat}
-\title{Find markers with Seurat FindAllMarkers}
+\title{Find markers with Seurat FindAllMarkers / FindMarkers}
 \usage{
-find_markers_seurat(exprs, clusters, top, min_log2fc, min_pct, pos_only)
+find_markers_seurat(
+  exprs,
+  clusters,
+  top,
+  min_log2fc,
+  min_pct,
+  pos_only,
+  refs,
+  max_pct_out
+)
 }
 \description{
-Find markers with Seurat FindAllMarkers
+Find markers with Seurat FindAllMarkers / FindMarkers
 }
 \keyword{internal}

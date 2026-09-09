@@ -221,3 +221,265 @@ test_that("find_markers() validates format", {
         "arg"
     )
 })
+
+# --- synthetic A/B/C fixtures for the `against` / max_pct_out tests ---
+# A and B are correlated siblings sharing the pan-lineage genes (pan,
+# pan2) that C lacks; disc separates A from B/C. Types are 20/20/40 cells.
+sib_clusters <- setNames(
+    rep(c("A", "B", "C"), c(20, 20, 40)),
+    paste0("sibcell", seq_len(80))
+)
+sib_counts <- matrix(
+    0, 6, 80,
+    dimnames = list(
+        c("pan", "pan2", "disc", "bg1", "bg2", "noise"),
+        names(sib_clusters)
+    )
+)
+sib_counts["pan", sib_clusters %in% c("A", "B")] <- 10
+sib_counts["pan2", sib_clusters %in% c("A", "B")] <- 5
+sib_counts["disc", sib_clusters == "A"] <- 10
+sib_counts["disc", sib_clusters == "C"] <- 3
+sib_counts["bg1", ] <- 1
+sib_counts["bg2", ] <- 0.5
+sib_counts["noise", sib_clusters == "A"][1] <- 0.5
+exprs_sib <- log1p(sib_counts)
+
+# collect the warnings raised by an expression (muffling them)
+catch_warnings <- function(code) {
+    out <- character(0)
+    withCallingHandlers(
+        code,
+        warning = function(cond) {
+            out <<- c(out, conditionMessage(cond))
+            invokeRestart("muffleWarning")
+        }
+    )
+    out
+}
+
+test_that("find_markers() fc `against` recovers the sibling discriminator", {
+    res_null <- find_markers(
+        exprs_sib, sib_clusters, method = "fc", top = 5, format = "db"
+    )
+    res_ag <- find_markers(
+        exprs_sib, sib_clusters, method = "fc", top = 5,
+        against = "B", format = "db"
+    )
+    a_null <- strsplit(
+        res_null$geneSymbolmore1[res_null$cellName == "A"], ","
+    )[[1]]
+    a_ag <- strsplit(
+        res_ag$geneSymbolmore1[res_ag$cellName == "A"], ","
+    )[[1]]
+    # the pan-lineage gene outranks the A-vs-B discriminator one-vs-rest
+    expect_true(all(c("pan", "disc") %in% a_null))
+    expect_lt(which(a_null == "pan")[1], which(a_null == "disc")[1])
+    # ... but comparing A against its sibling B keeps only the discriminator
+    expect_identical(a_ag, "disc")
+    expect_false("pan" %in% a_ag)
+    # the type listed in `against` is not compared against itself
+    expect_identical(res_ag$geneSymbolmore1[res_ag$cellName == "B"], "")
+})
+
+test_that("find_markers() fc `against = 'nearest'` uses the most-correlated type", {
+    # A's most-correlated type is B (mean-expression-profile Pearson
+    # correlation: r(A,B) ~ 0.54 > r(A,C) ~ 0.27 on this fixture)
+    res_near <- find_markers(
+        exprs_sib, sib_clusters, method = "fc", top = 5,
+        against = "nearest", format = "db"
+    )
+    res_b <- find_markers(
+        exprs_sib, sib_clusters, method = "fc", top = 5,
+        against = "B", format = "db"
+    )
+    # nearest behaves exactly like passing the resolved type explicitly
+    expect_identical(
+        res_near$geneSymbolmore1[res_near$cellName == "A"],
+        res_b$geneSymbolmore1[res_b$cellName == "A"]
+    )
+    # ... and differs from using the distinct type C as the reference
+    res_c <- find_markers(
+        exprs_sib, sib_clusters, method = "fc", top = 5,
+        against = "C", format = "db"
+    )
+    expect_false(identical(
+        res_near$geneSymbolmore1[res_near$cellName == "A"],
+        res_c$geneSymbolmore1[res_c$cellName == "A"]
+    ))
+})
+
+test_that("find_markers() fc top = c(n_pos, n_neg) budgets each direction", {
+    # the guard drops pan-lineage candidates from the !pos_only positive
+    # pool on the main fixture, warning once about the count per type.
+    # collect the warning while keeping the return value (expect_warning
+    # returns the condition itself under testthat edition 3)
+    w <- character(0)
+    res <- withCallingHandlers(
+        find_markers(
+            exprs, clusters, method = "fc", top = c(5, 3),
+            pos_only = FALSE, format = "db"
+        ),
+        warning = function(cond) {
+            w <<- c(w, conditionMessage(cond))
+            invokeRestart("muffleWarning")
+        }
+    )
+    expect_match(w, "max_pct_out")
+    for (ct in names(known)) {
+        pos <- strsplit(
+            res$geneSymbolmore1[res$cellName == ct], ","
+        )[[1]]
+        neg <- strsplit(
+            res$geneSymbolmore2[res$cellName == ct], ","
+        )[[1]]
+        expect_length(pos, 5)
+        expect_length(neg, 3)
+    }
+    # a scalar top applies to both directions
+    w2 <- character(0)
+    res2 <- withCallingHandlers(
+        find_markers(
+            exprs, clusters, method = "fc", top = 4,
+            pos_only = FALSE, format = "db"
+        ),
+        warning = function(cond) {
+            w2 <<- c(w2, conditionMessage(cond))
+            invokeRestart("muffleWarning")
+        }
+    )
+    expect_match(w2, "max_pct_out")
+    expect_length(
+        strsplit(res2$geneSymbolmore1[res2$cellName == "Tcell"], ",")[[1]],
+        4
+    )
+    expect_length(
+        strsplit(res2$geneSymbolmore2[res2$cellName == "Tcell"], ",")[[1]],
+        4
+    )
+})
+
+test_that("find_markers() fc max_pct_out guards pan-lineage genes", {
+    # mA/mB/mC are type-specific markers; hA/hB/hC are over-expressed in
+    # their own type but expressed in >75% of all the other cells (5 in
+    # half of the cells of each other type)
+    guard_counts <- matrix(
+        0, 6, 80,
+        dimnames = list(
+            c("mA", "mB", "mC", "hA", "hB", "hC"),
+            names(sib_clusters)
+        )
+    )
+    guard_counts["mA", sib_clusters == "A"] <- 10
+    guard_counts["mB", sib_clusters == "B"] <- 10
+    guard_counts["mC", sib_clusters == "C"] <- 10
+    guard_counts["hA", sib_clusters == "A"] <- 10
+    guard_counts["hA", sib_clusters != "A"] <- 5
+    guard_counts["hB", sib_clusters == "B"] <- 10
+    guard_counts["hB", sib_clusters != "B"] <- 5
+    guard_counts["hC", sib_clusters == "C"] <- 10
+    guard_counts["hC", sib_clusters != "C"] <- 5
+    exprs_g <- log1p(guard_counts)
+    w <- character(0)
+    res <- withCallingHandlers(
+        find_markers(
+            exprs_g, sib_clusters, method = "fc", top = 10, format = "db"
+        ),
+        warning = function(cond) {
+            w <<- c(w, conditionMessage(cond))
+            invokeRestart("muffleWarning")
+        }
+    )
+    # a single aggregated warning reports one dropped candidate per type
+    expect_length(w, 1)
+    expect_match(w, "max_pct_out")
+    expect_match(w, "A: 1, B: 1, C: 1")
+    # only the type-specific markers survive
+    expect_identical(res$geneSymbolmore1[res$cellName == "A"], "mA")
+    expect_identical(res$geneSymbolmore1[res$cellName == "B"], "mB")
+    expect_identical(res$geneSymbolmore1[res$cellName == "C"], "mC")
+    # max_pct_out = 1 disables the guard: no warning, hybrids are kept
+    w2 <- character(0)
+    res2 <- withCallingHandlers(
+        find_markers(
+            exprs_g, sib_clusters, method = "fc", top = 10,
+            max_pct_out = 1, format = "db"
+        ),
+        warning = function(cond) {
+            w2 <<- c(w2, conditionMessage(cond))
+            invokeRestart("muffleWarning")
+        }
+    )
+    expect_identical(w2, character(0))
+    expect_true("hA" %in% strsplit(
+        res2$geneSymbolmore1[res2$cellName == "A"], ","
+    )[[1]])
+})
+
+test_that("find_markers() fc `against` finds sibling-specific negatives", {
+    # b1 is expressed in the sibling type B only, c1 in the distinct
+    # type C only; both are low in A
+    neg_counts <- matrix(
+        0, 2, 80,
+        dimnames = list(c("b1", "c1"), names(sib_clusters))
+    )
+    neg_counts["b1", sib_clusters == "B"] <- 10
+    neg_counts["c1", sib_clusters == "C"] <- 10
+    exprs_neg <- log1p(neg_counts)
+    res_null <- find_markers(
+        exprs_neg, sib_clusters, method = "fc", top = c(2, 5),
+        pos_only = FALSE, format = "db"
+    )
+    res_ag <- find_markers(
+        exprs_neg, sib_clusters, method = "fc", top = c(2, 5),
+        pos_only = FALSE, against = "B", format = "db"
+    )
+    a_null <- strsplit(
+        res_null$geneSymbolmore2[res_null$cellName == "A"], ","
+    )[[1]]
+    a_ag <- strsplit(
+        res_ag$geneSymbolmore2[res_ag$cellName == "A"], ","
+    )[[1]]
+    # both genes are negative markers of A vs all the other cells ...
+    expect_identical(a_null, c("b1", "c1"))
+    # ... but with `against = "B"` only b1 is also low in A relative to
+    # the sibling type (c1 is not expressed in B at all)
+    expect_identical(a_ag, "b1")
+    expect_false("c1" %in% a_ag)
+})
+
+test_that("find_markers() validates `against`, `top` and `max_pct_out`", {
+    expect_error(find_markers(exprs, clusters, top = c(1, 2, 3)), "top")
+    expect_error(find_markers(exprs, clusters, top = c(0, 5)), "top")
+    expect_error(find_markers(exprs, clusters, top = 1.5), "top")
+    expect_error(
+        find_markers(exprs, clusters, max_pct_out = 0), "max_pct_out"
+    )
+    expect_error(
+        find_markers(exprs, clusters, max_pct_out = 1.5), "max_pct_out"
+    )
+    expect_error(find_markers(exprs, clusters, against = 1), "against")
+    expect_error(
+        find_markers(exprs, clusters, against = "Rare"), "not present"
+    )
+    expect_error(
+        find_markers(exprs, clusters, method = "presto", against = "Bcell"),
+        "presto"
+    )
+    # a type cannot be compared against itself when it is the only type
+    single <- sib_clusters[sib_clusters == "A"]
+    expect_error(
+        find_markers(
+            exprs_sib[, names(single)], single, method = "fc",
+            against = "A"
+        ),
+        "itself"
+    )
+    expect_error(
+        find_markers(
+            exprs_sib[, names(single)], single, method = "fc",
+            against = "nearest"
+        ),
+        "nearest"
+    )
+})

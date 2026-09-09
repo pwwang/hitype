@@ -4,7 +4,15 @@
 \alias{find_markers_presto}
 \title{Find markers with presto wilcoxauc}
 \usage{
-find_markers_presto(exprs, clusters, top, min_log2fc, min_pct, pos_only)
+find_markers_presto(
+  exprs,
+  clusters,
+  top,
+  min_log2fc,
+  min_pct,
+  pos_only,
+  max_pct_out
+)
 }
 \description{
 Find markers with presto wilcoxauc

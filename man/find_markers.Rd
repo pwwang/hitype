@@ -8,9 +8,11 @@ find_markers(
   exprs,
   clusters = NULL,
   method = c("fc", "seurat", "presto"),
-  top = 20,
+  top = c(10, 10),
   min_log2fc = 0.25,
   min_pct = 0.1,
+  against = NULL,
+  max_pct_out = 0.75,
   pos_only = TRUE,
   level = 1,
   format = c("universal", "db")
@@ -35,13 +37,55 @@ object.}
 Requires the presto package.}
 }}
 
-\item{top}{Number of markers to return per cell type.}
+\item{top}{Number of markers to return per cell type: a single number
+applied to both positive and negative markers, or a length-2 vector
+\code{c(n_positive, n_negative)} budgeting each direction separately
+(default \code{c(10, 10)}). The negative budget is only used when
+\code{pos_only = FALSE}.}
 
 \item{min_log2fc}{Minimum log2 fold change for a gene to be kept as a
 marker (when \code{pos_only = TRUE}).}
 
 \item{min_pct}{Minimum fraction of cells in the cell type expressing
 the gene.}
+
+\item{against}{Restrict the reference group a cell type is compared
+against (by default one-vs-rest, i.e. all other cells). One of:
+\describe{
+\item{\code{NULL}}{One-vs-rest (default).}
+\item{a character vector of cell types}{Only the cells of those
+types form the reference group: \code{pct_out}, \code{log2fc} and the score
+are computed against them instead of all the other cells, which
+recovers sibling-specific markers shared with the rest of the
+cells. A type listed in \code{against} cannot use its own cells as the
+reference, so they are excluded from its reference group; if no
+other listed type remains, no markers are returned for it.}
+\item{\code{"nearest"}}{For each cell type, the single most similar other
+type is used as its reference group. Similarity is the Pearson
+correlation between the mean expression profiles of the two types
+(computed once per call over the input matrix), and the resolved
+type is then used exactly like an explicit \code{against} entry.}
+}
+An error is raised if \code{against} names a cell type not present in the
+data (available types are listed) or if it names the only cell type
+in the data (a type cannot be compared against itself). Negative
+markers (\code{pos_only = FALSE}) are extracted as before as genes low in
+the type vs the rest of the cells, but when \code{against} is set they
+must ALSO satisfy \code{log2fc <= -min_log2fc} against the reference
+group, so that sibling-specific negative markers are found.
+For \code{method = "seurat"}, \code{against} is implemented with per-type
+two-group \code{Seurat::FindMarkers(ident.1 = type, ident.2 = against)}
+calls (\code{"nearest"} is resolved to the per-type reference types
+first); \code{method = "presto"} does not support \code{against} and raises an
+error.}
+
+\item{max_pct_out}{Drop positive-marker candidates expressed in more
+than this fraction of ALL other cells (the one-vs-rest \code{pct_out},
+computed over all cells not of the type even when \code{against} is set),
+guarding against pan-lineage genes up-regulated in most other cell
+types. Negative markers are not subject to this guard. A single
+aggregated warning reports the number of dropped candidates per cell
+type. Default \code{0.75}.}
 
 \item{pos_only}{Only keep genes that are higher in the cell type than
 in the rest of the cells (positive markers). If \code{FALSE}, all genes

@@ -1,3 +1,10 @@
+## Version 0.1.1
+
+- ✨ `find_markers()`: `against` argument for sibling-aware extraction
+  (`"nearest"` = most-correlated type), balanced `top = c(pos, neg)`
+  budgets (default `c(10, 10)`), and `max_pct_out` pan-lineage exclusion
+  guard.
+
 ## Version 0.1.0
 
 - 🐛 Fix `RunHitype()` with a metadata-column `ident` (cluster-level

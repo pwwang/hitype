@@ -4,7 +4,16 @@
 \alias{find_markers_fc}
 \title{Find markers by fold change}
 \usage{
-find_markers_fc(exprs, clusters, top, min_log2fc, min_pct, pos_only)
+find_markers_fc(
+  exprs,
+  clusters,
+  top,
+  min_log2fc,
+  min_pct,
+  pos_only,
+  refs,
+  max_pct_out
+)
 }
 \description{
 Find markers by fold change
