@@ -4,6 +4,10 @@
   (`"nearest"` = most-correlated type), balanced `top = c(pos, neg)`
   budgets (default `c(10, 10)`), and `max_pct_out` pan-lineage exclusion
   guard.
+- ✨ Add model-based scoring: `train_weights(return_models = TRUE)`
+  persists per-type linear models (glmnet/lr) and `hitype_score_models()`
+  scores cells with the model equations (linear predictors) and a
+  margin-based Unknown threshold.
 
 ## Version 0.1.0
 

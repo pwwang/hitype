@@ -24,6 +24,12 @@
 #'  If NULL, return cell-level assignments for each cell.
 #'  If "ident", return cluster(identity)-level assignments for each cluster.
 #'  if a character, return cluster-level assignments for each cluster based on the specified column in the metadata.
+#' @param norm The normalization method for `hitype_score`, passed through
+#'  as-is. One of "sqrt", "weight", "none". "weight" is recommended when
+#'  scoring with learned weights.
+#' @param use_sensitivity Whether to weight markers by their sensitivity in
+#'  `hitype_score`. `FALSE` is recommended when scoring with learned
+#'  weights.
 #' @param ... Additional arguments passed to the specific method.
 #' @return The Seurat object with the cell types (named `hitype`) added to the
 #'  metadata
@@ -47,6 +53,8 @@ RunHitype.Seurat <- function(
     threshold = NULL,
     level_weights = function(l) 1 / (10 ^ (l - 1)),
     make_unique = FALSE,
+    norm = "sqrt",
+    use_sensitivity = TRUE,
     layer = "data",
     assay = NULL,
     scaled = FALSE,
@@ -56,7 +64,9 @@ RunHitype.Seurat <- function(
     scores <- hitype_score(
         Seurat::GetAssayData(object, layer = layer, assay = assay),
         gs = gs,
-        scaled = scaled
+        scaled = scaled,
+        norm = norm,
+        use_sensitivity = use_sensitivity
     )
     if (is.null(ident)) {
         # cell-level assignments: give each cell its own "cluster" so that

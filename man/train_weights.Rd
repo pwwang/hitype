@@ -20,6 +20,7 @@ train_weights(
   format = c("universal", "db"),
   drop_zero = TRUE,
   pos_only = FALSE,
+  return_models = FALSE,
   seed = 8525
 )
 }
@@ -105,12 +106,41 @@ the \code{"correlation"} method); such rows are reported with
 so the returned table contains markers overexpressed in each cell type
 only.}
 
+\item{return_models}{Whether to also return the fitted per-cell-type
+prediction models (default \code{FALSE}). With \code{FALSE} (default) the return
+value is unchanged: a data frame with the weights. With \code{TRUE}, a list
+is returned instead:
+\describe{
+\item{\code{weights}}{The usual weights data frame (universal or db
+format).}
+\item{\code{models}}{A model bundle list that \code{\link[=hitype_score_models]{hitype_score_models()}}
+can score new cells with:
+\describe{
+\item{\code{method}}{The weight learning method.}
+\item{\code{level}}{The level of the gene sets.}
+\item{\code{features}}{The ordered gene list the models were fit on.}
+\item{\code{center}, \code{scale}}{Numeric vectors named by \code{features}
+with the per-gene centering/scaling that was applied to the
+training matrix, so scoring can reproduce it exactly.}
+\item{\code{coefs}}{A named list, one entry per trained cell type,
+each a named numeric coefficient vector of the linear
+predictor including the intercept as \code{"(Intercept)"}. \code{NULL}
+for methods without linear models.}
+}}
+\item{\code{labels}}{The trained cell types (names of \code{coefs}).}
+}
+Model bundles are only produced for the linear-model methods
+\code{"glmnet"} and \code{"lr"}; with any other method \code{coefs} is \code{NULL},
+\code{labels} is \code{NULL}, and \code{\link[=hitype_score_models]{hitype_score_models()}} errors.}
+
 \item{seed}{Random seed for reproducibility}
 }
 \value{
-A data frame with the weights in the universal marker format
-(default) or the db format (\code{format = "db"}), that can be used directly
-by \code{\link[=gs_prepare]{gs_prepare()}}.
+By default, a data frame with the weights in the universal marker
+format (default) or the db format (\code{format = "db"}), that can be used
+directly by \code{\link[=gs_prepare]{gs_prepare()}}. With \code{return_models = TRUE}, a list with the
+weights data frame, the model bundle and the trained cell type labels
+(see \code{return_models}).
 }
 \description{
 Train weights for the markers

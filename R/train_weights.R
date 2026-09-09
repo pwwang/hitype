@@ -74,10 +74,38 @@
 #'   `direction = "negative"` and are dropped when `pos_only = TRUE`,
 #'   so the returned table contains markers overexpressed in each cell type
 #'   only.
+#' @param return_models Whether to also return the fitted per-cell-type
+#'   prediction models (default `FALSE`). With `FALSE` (default) the return
+#'   value is unchanged: a data frame with the weights. With `TRUE`, a list
+#'   is returned instead:
+#'   \describe{
+#'     \item{`weights`}{The usual weights data frame (universal or db
+#'       format).}
+#'     \item{`models`}{A model bundle list that [hitype_score_models()]
+#'       can score new cells with:
+#'       \describe{
+#'         \item{`method`}{The weight learning method.}
+#'         \item{`level`}{The level of the gene sets.}
+#'         \item{`features`}{The ordered gene list the models were fit on.}
+#'         \item{`center`, `scale`}{Numeric vectors named by `features`
+#'           with the per-gene centering/scaling that was applied to the
+#'           training matrix, so scoring can reproduce it exactly.}
+#'         \item{`coefs`}{A named list, one entry per trained cell type,
+#'           each a named numeric coefficient vector of the linear
+#'           predictor including the intercept as `"(Intercept)"`. `NULL`
+#'           for methods without linear models.}
+#'       }}
+#'     \item{`labels`}{The trained cell types (names of `coefs`).}
+#'   }
+#'   Model bundles are only produced for the linear-model methods
+#'   `"glmnet"` and `"lr"`; with any other method `coefs` is `NULL`,
+#'   `labels` is `NULL`, and [hitype_score_models()] errors.
 #' @param seed Random seed for reproducibility
-#' @return A data frame with the weights in the universal marker format
-#'  (default) or the db format (`format = "db"`), that can be used directly
-#'  by [gs_prepare()].
+#' @return By default, a data frame with the weights in the universal marker
+#'  format (default) or the db format (`format = "db"`), that can be used
+#'  directly by [gs_prepare()]. With `return_models = TRUE`, a list with the
+#'  weights data frame, the model bundle and the trained cell type labels
+#'  (see `return_models`).
 #'
 #' @export
 train_weights <- function(
@@ -96,6 +124,7 @@ train_weights <- function(
     format = c("universal", "db"),
     drop_zero = TRUE,
     pos_only = FALSE,
+    return_models = FALSE,
     seed = 8525
 ) {
     method <- match.arg(method)
@@ -137,8 +166,8 @@ train_weights <- function(
         method,
         uniform    = train_uniform(data, clusters),
         correlation = train_correlation(data, clusters),
-        lr         = train_lr(data, clusters, cv_folds),
-        glmnet     = train_glmnet(data, clusters, cv_folds),
+        lr         = train_lr(data, clusters, cv_folds, return_models),
+        glmnet     = train_glmnet(data, clusters, cv_folds, return_models),
         rf         = train_rf(data, clusters),
         xgb        = train_xgb(data, clusters),
         lrp        = train_lrp(
@@ -146,6 +175,24 @@ train_weights <- function(
             epochs, batch_size, data_split
         )
     )
+
+    # The linear-model methods (glmnet, lr) return the fitted per-type
+    # coefficient vectors alongside the weights table when models are
+    # requested, so the bundle and the table come from the same fits.
+    model_coefs <- NULL
+    if (return_models && method %in% c("glmnet", "lr")) {
+        model_coefs <- result$coefs
+        result <- result$weights
+    } else if (return_models && method %in% c("rf", "xgb", "lrp")) {
+        warning(
+            paste0(
+                "`return_models = TRUE` is not supported for method '",
+                method, "'; model-based scoring is only available for ",
+                "methods 'glmnet' and 'lr'"
+            ),
+            immediate. = TRUE
+        )
+    }
 
     weights <- compile_weights(
         result, data$gs, level, range, format, drop_zero, pos_only
@@ -155,7 +202,28 @@ train_weights <- function(
             weights, exprs, clusters, scaled, rownames(test_data_x)
         )
     }
-    weights
+    if (!return_models) {
+        return(weights)
+    }
+
+    # Report the cell types of the weights table (in its order): fits of
+    # types the compiled weights drop (no markers left) are not included
+    if (!is.null(model_coefs)) {
+        model_coefs <- model_coefs[
+            intersect(names(data$gs), names(model_coefs))
+        ]
+    }
+    bundle <- list(
+        method = method,
+        level = as.integer(level),
+        features = colnames(data$z),
+        center = data$center,
+        scale = data$scale,
+        coefs = model_coefs
+    )
+    if (isTRUE(data$scaled_input)) bundle$scaled_input <- TRUE
+    if (is.null(model_coefs)) bundle$models <- list()
+    list(weights = weights, models = bundle, labels = names(model_coefs))
 }
 
 # ============================================================================
@@ -198,7 +266,7 @@ train_correlation <- function(data, clusters) {
 #' Logistic regression weights (one-vs-rest)
 #' @keywords internal
 #' @importFrom stats glm binomial coef
-train_lr <- function(data, clusters, cv_folds = 1) {
+train_lr <- function(data, clusters, cv_folds = 1, return_models = FALSE) {
     uctypes <- unique(data$clusters)
     markers <- colnames(data$z)
     z <- data$z
@@ -210,9 +278,9 @@ train_lr <- function(data, clusters, cv_folds = 1) {
             ct_idx <- which(clusters == ct)
             fold[ct_idx] <- sample(rep_len(seq_len(cv_folds), length(ct_idx)))
         }
-        all_coefs <- lapply(uctypes, function(ct) {
+        res <- lapply(uctypes, function(ct) {
             y <- as.numeric(clusters == ct)
-            fold_coefs <- lapply(seq_len(cv_folds), function(k) {
+            fold_fits <- lapply(seq_len(cv_folds), function(k) {
                 train_idx <- which(fold != k)
                 z_train <- z[train_idx, , drop = FALSE]
                 y_train <- y[train_idx]
@@ -222,39 +290,85 @@ train_lr <- function(data, clusters, cv_folds = 1) {
                 )
                 cf <- coef(fit)[-1]  # drop intercept
                 cf[is.na(cf)] <- 0
-                cf
+                list(cf = cf, mcf = model_coefs_lr(fit, markers, return_models))
             })
-            vals <- Reduce(`+`, fold_coefs) / cv_folds
-            data.frame(
-                output_node = ct,
-                feature = markers,
-                value = vals,
-                stringsAsFactors = FALSE
+            vals <- Reduce(`+`, lapply(fold_fits, `[[`, "cf")) / cv_folds
+            list(
+                df = data.frame(
+                    output_node = ct,
+                    feature = markers,
+                    value = vals,
+                    stringsAsFactors = FALSE
+                ),
+                mcoefs = fold_models_lr(fold_fits, return_models)
             )
         })
-        return(do.call(rbind, all_coefs))
+    } else {
+        res <- lapply(uctypes, function(ct) {
+            y <- as.numeric(clusters == ct)
+            fit <- suppressWarnings(
+                glm(y ~ ., data = as.data.frame(z), family = binomial())
+            )
+            vals <- coef(fit)[-1]
+            vals[is.na(vals)] <- 0
+            list(
+                df = data.frame(
+                    output_node = ct,
+                    feature = markers,
+                    value = vals,
+                    stringsAsFactors = FALSE
+                ),
+                mcoefs = model_coefs_lr(fit, markers, return_models)
+            )
+        })
     }
+    collect_models_result(res, uctypes, return_models)
+}
 
-    out <- lapply(uctypes, function(ct) {
-        y <- as.numeric(clusters == ct)
-        fit <- suppressWarnings(
-            glm(y ~ ., data = as.data.frame(z), family = binomial())
-        )
-        vals <- coef(fit)[-1]
-        vals[is.na(vals)] <- 0
-        data.frame(
-            output_node = ct,
-            feature = markers,
-            value = vals,
-            stringsAsFactors = FALSE
-        )
-    })
-    do.call(rbind, out)
+#' Extract the per-type linear predictor coefficients of a glm fit
+#'
+#' Aligned by name to c("(Intercept)", markers): an aliased term can be
+#' absent from `coef()`, it then stays 0.
+#' @keywords internal
+model_coefs_lr <- function(fit, markers, return_models) {
+    if (!return_models) {
+        return(NULL)
+    }
+    mcf <- coef(fit)
+    mcf[is.na(mcf)] <- 0
+    out <- setNames(
+        c(0, rep(0, length(markers))), c("(Intercept)", markers)
+    )
+    out[names(mcf)] <- mcf
+    out
+}
+
+#' Average per-fold linear predictor coefficients (cv_folds > 1)
+#' @keywords internal
+fold_models_lr <- function(fold_fits, return_models) {
+    if (!return_models) {
+        return(NULL)
+    }
+    Reduce(`+`, lapply(fold_fits, `[[`, "mcf")) / length(fold_fits)
+}
+
+#' Turn per-type fit results into the weights table and (optionally) the
+#' coefficient list of the model bundle
+#' @keywords internal
+collect_models_result <- function(res, uctypes, return_models) {
+    df <- do.call(rbind, lapply(res, `[[`, "df"))
+    if (!return_models) {
+        return(df)
+    }
+    coefs <- setNames(lapply(res, `[[`, "mcoefs"), uctypes)
+    # A type whose fit failed (mcoefs NULL) is not in the bundle
+    coefs <- coefs[!vapply(coefs, is.null, logical(1))]
+    list(weights = df, coefs = coefs)
 }
 
 #' Sparse logistic regression weights (glmnet)
 #' @keywords internal
-train_glmnet <- function(data, clusters, cv_folds = 5) {
+train_glmnet <- function(data, clusters, cv_folds = 5, return_models = FALSE) {
     if (!requireNamespace("glmnet", quietly = TRUE)) {
         stop("Package 'glmnet' is required for method='glmnet'. ",
              "Install with: install.packages('glmnet')")
@@ -262,6 +376,18 @@ train_glmnet <- function(data, clusters, cv_folds = 5) {
     uctypes <- unique(data$clusters)
     markers <- colnames(data$z)
     z <- data$z
+    # The weights table takes the coefficients at lambda.1se; the model
+    # bundle the coefficients (with the intercept) at lambda.min — both
+    # from the same fit so they never diverge.
+    glmnet_model_coefs <- function(fit) {
+        if (!return_models) {
+            return(NULL)
+        }
+        setNames(
+            as.numeric(coef(fit, s = "lambda.min")),
+            c("(Intercept)", markers)
+        )
+    }
 
     if (cv_folds > 1) {
         n <- nrow(z)
@@ -272,9 +398,9 @@ train_glmnet <- function(data, clusters, cv_folds = 5) {
                 rep_len(seq_len(cv_folds), length(ct_idx))
             )
         }
-        all_coefs <- lapply(uctypes, function(ct) {
+        res <- lapply(uctypes, function(ct) {
             y <- as.numeric(clusters == ct)
-            fold_coefs <- lapply(seq_len(cv_folds), function(k) {
+            fold_fits <- lapply(seq_len(cv_folds), function(k) {
                 train_idx <- which(fold != k)
                 z_train <- as.matrix(z[train_idx, , drop = FALSE])
                 y_train <- y[train_idx]
@@ -286,26 +412,51 @@ train_glmnet <- function(data, clusters, cv_folds = 5) {
                     error = function(e) NULL
                 )
                 if (is.null(fit)) {
-                    return(setNames(rep(0, length(markers)), markers))
+                    return(list(
+                        cf = setNames(rep(0, length(markers)), markers),
+                        mcf = if (return_models) {
+                            setNames(
+                                rep(0, length(markers) + 1),
+                                c("(Intercept)", markers)
+                            )
+                        } else {
+                            NULL
+                        },
+                        ok = FALSE
+                    ))
                 }
                 lam <- if (inherits(fit, "cv.glmnet")) fit$lambda.1se
                        else median(fit$lambda)
                 cf <- as.numeric(coef(fit, s = lam))[-1]
                 cf[is.na(cf)] <- 0
-                cf
+                list(cf = cf, mcf = glmnet_model_coefs(fit), ok = TRUE)
             })
-            vals <- Reduce(`+`, fold_coefs) / cv_folds
-            data.frame(
-                output_node = ct,
-                feature = markers,
-                value = vals,
-                stringsAsFactors = FALSE
+            vals <- Reduce(`+`, lapply(fold_fits, `[[`, "cf")) / cv_folds
+            # A type whose fits all failed is left out of the bundle (the
+            # weights table path handles it with all-zero coefficients)
+            mcoefs <- NULL
+            if (return_models) {
+                ok <- vapply(fold_fits, function(ff) ff$ok, logical(1))
+                if (any(ok)) {
+                    mcoefs <- Reduce(
+                        `+`, lapply(fold_fits, `[[`, "mcf")
+                    ) / cv_folds
+                }
+            }
+            list(
+                df = data.frame(
+                    output_node = ct,
+                    feature = markers,
+                    value = vals,
+                    stringsAsFactors = FALSE
+                ),
+                mcoefs = mcoefs
             )
         })
-        return(do.call(rbind, all_coefs))
+        return(collect_models_result(res, uctypes, return_models))
     }
 
-    out <- lapply(uctypes, function(ct) {
+    res <- lapply(uctypes, function(ct) {
         y <- as.numeric(clusters == ct)
         zm <- as.matrix(z)
         fit <- tryCatch(
@@ -314,22 +465,27 @@ train_glmnet <- function(data, clusters, cv_folds = 5) {
             ),
             error = function(e) NULL
         )
+        mcoefs <- NULL
         if (is.null(fit)) {
             vals <- rep(0, length(markers))
         } else {
             lam <- if (inherits(fit, "cv.glmnet")) fit$lambda.1se
                    else median(fit$lambda)
             vals <- as.numeric(coef(fit, s = lam))[-1]
+            mcoefs <- glmnet_model_coefs(fit)
         }
         vals[is.na(vals)] <- 0
-        data.frame(
-            output_node = ct,
-            feature = markers,
-            value = vals,
-            stringsAsFactors = FALSE
+        list(
+            df = data.frame(
+                output_node = ct,
+                feature = markers,
+                value = vals,
+                stringsAsFactors = FALSE
+            ),
+            mcoefs = mcoefs
         )
     })
-    do.call(rbind, out)
+    collect_models_result(res, uctypes, return_models)
 }
 
 #' Random forest permutation importance weights
@@ -780,8 +936,17 @@ prepare_data_for_training <- function(
     } else {
         exprs <- t(exprs)
     }
+    # The per-gene centering/scaling applied to the training matrix is
+    # recorded so that model-based scoring (hitype_score_models()) can
+    # reproduce the training values exactly. The statistics describe the
+    # matrix before the test-set rows are removed in train_weights(): the
+    # models are fit on rows scaled with these statistics, so scoring must
+    # use the same ones — recomputing them on the training rows only would
+    # not reproduce the values the models were fit on.
     if (!scaled) {
-        exprs <- scale(exprs)
+        z <- scale(exprs)
+        center <- attr(z, "scaled:center")
+        sds <- attr(z, "scaled:scale")
         # Genes with no variance across the cells (e.g. unexpressed) become
         # all-NA columns after scaling. They carry no signal for training,
         # yet make every model fit fail with "x has missing values" —
@@ -789,9 +954,9 @@ prepare_data_for_training <- function(
         # coefficients -> the rescale midpoint as weights). Drop them from
         # the matrix and the gene sets so they never reach the model or the
         # compiled weights.
-        zero_var <- Matrix::colSums(is.na(exprs)) > 0
+        zero_var <- Matrix::colSums(is.na(z)) > 0
         if (any(zero_var)) {
-            dropped <- colnames(exprs)[zero_var]
+            dropped <- colnames(z)[zero_var]
             warning(
                 paste0(
                     "The following markers have no variance across the ",
@@ -800,16 +965,28 @@ prepare_data_for_training <- function(
                 ),
                 immediate. = TRUE
             )
-            exprs <- exprs[, !zero_var, drop = FALSE]
+            z <- z[, !zero_var, drop = FALSE]
+            center <- center[colnames(z)]
+            sds <- sds[colnames(z)]
             for (ct in names(gs)) {
                 gs[[ct]]$markers <- intersect(
-                    gs[[ct]]$markers, colnames(exprs)
+                    gs[[ct]]$markers, colnames(z)
                 )
             }
         }
+        exprs <- z
+    } else {
+        # Already-scaled input is used as-is: no centering/scaling was
+        # applied to the training matrix, so scoring must not apply any
+        # either (the bundle records scaled_input = TRUE for that)
+        center <- setNames(rep(0, ncol(exprs)), colnames(exprs))
+        sds <- setNames(rep(1, ncol(exprs)), colnames(exprs))
     }
 
-    list(gs = gs, z = exprs, clusters = clusters)
+    list(
+        gs = gs, z = exprs, clusters = clusters,
+        center = center, scale = sds, scaled_input = scaled
+    )
 }
 
 #' Compile the weights

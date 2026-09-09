@@ -4,7 +4,7 @@
 \alias{train_glmnet}
 \title{Sparse logistic regression weights (glmnet)}
 \usage{
-train_glmnet(data, clusters, cv_folds = 5)
+train_glmnet(data, clusters, cv_folds = 5, return_models = FALSE)
 }
 \description{
 Sparse logistic regression weights (glmnet)

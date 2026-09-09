@@ -17,6 +17,8 @@ RunHitype(object, ...)
   threshold = NULL,
   level_weights = function(l) 1/(10^(l - 1)),
   make_unique = FALSE,
+  norm = "sqrt",
+  use_sensitivity = TRUE,
   layer = "data",
   assay = NULL,
   scaled = FALSE,
@@ -44,6 +46,14 @@ It can also be a function that takes the levels as input and returns a
 numeric vectors as the weights.}
 
 \item{make_unique}{Whether to make the cell type names unique}
+
+\item{norm}{The normalization method for \code{hitype_score}, passed through
+as-is. One of "sqrt", "weight", "none". "weight" is recommended when
+scoring with learned weights.}
+
+\item{use_sensitivity}{Whether to weight markers by their sensitivity in
+\code{hitype_score}. \code{FALSE} is recommended when scoring with learned
+weights.}
 
 \item{layer}{The layer to use for \code{GetAssayData}}
 

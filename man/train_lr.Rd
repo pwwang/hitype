@@ -4,7 +4,7 @@
 \alias{train_lr}
 \title{Logistic regression weights (one-vs-rest)}
 \usage{
-train_lr(data, clusters, cv_folds = 1)
+train_lr(data, clusters, cv_folds = 1, return_models = FALSE)
 }
 \description{
 Logistic regression weights (one-vs-rest)
