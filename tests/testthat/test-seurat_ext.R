@@ -27,4 +27,18 @@ test_that("RunHitype() works", {
     x <- suppressWarnings(RunHitype(object, gs))
     expect_true("CD4 Naive Proliferating" %in% x$hitype)
     expect_true("CD8" %in% x$hitype)
+    # Cell-level (default ident = NULL): every cell gets a type, and cells
+    # within the same identity group may get different types
+    expect_length(x$hitype, ncol(object))
+    expect_false(anyNA(x$hitype))
+    idents <- as.character(Seurat::Idents(object))
+    expect_gt(length(unique(x$hitype[idents == "0"])), 1)
+
+    # Cluster-level (ident = "ident"): all cells of a cluster share one type
+    y <- suppressWarnings(RunHitype(object, gs, ident = "ident"))
+    expect_true(all(vapply(
+        split(y$hitype, idents),
+        function(z) length(unique(z)) == 1,
+        logical(1)
+    )))
 })

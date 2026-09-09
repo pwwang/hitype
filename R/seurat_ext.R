@@ -20,6 +20,10 @@
 #' @param layer The layer to use for `GetAssayData`
 #' @param assay The assay to use for `GetAssayData`
 #' @param scaled Whether the data from `GetAssayData` is scaled
+#' @param ident The identity column to use majority voting to assign cell types to clusters
+#'  If NULL, return cell-level assignments for each cell.
+#'  If "ident", return cluster(identity)-level assignments for each cluster.
+#'  if a character, return cluster-level assignments for each cluster based on the specified column in the metadata.
 #' @param ... Additional arguments passed to the specific method.
 #' @return The Seurat object with the cell types (named `hitype`) added to the
 #'  metadata
@@ -46,6 +50,7 @@ RunHitype.Seurat <- function(
     layer = "data",
     assay = NULL,
     scaled = FALSE,
+    ident = NULL,
     ...
 ) {
     scores <- hitype_score(
@@ -53,7 +58,19 @@ RunHitype.Seurat <- function(
         gs = gs,
         scaled = scaled
     )
-    clusters <- Seurat::Idents(object)
+    if (is.null(ident)) {
+        # cell-level assignments: give each cell its own "cluster" so that
+        # every cell gets its own top cell type
+        clusters <- Seurat::Cells(object)
+        names(clusters) <- clusters
+    } else if (identical(ident, "ident")) {
+        clusters <- Seurat::Idents(object)
+    } else if (is.character(ident) && length(ident) == 1 && ident %in% colnames(object@meta.data)) {
+        clusters <- object@meta.data[[ident]]
+    } else {
+        stop("Invalid ident argument. It should be NULL, 'ident', or a character string corresponding to a column in the metadata.")
+    }
+
     cell_types <- hitype_assign(
         clusters,
         scores = scores,
@@ -62,10 +79,12 @@ RunHitype.Seurat <- function(
         threshold = threshold
     )
     # Level, Cluster, CellType, Score
+    # make_unique dedupes repeated type names across clusters; it is not
+    # applicable to cell-level assignments where each row is one cell
     cell_types <- summary(
         cell_types,
         level_weights = level_weights,
-        make_unique = make_unique
+        make_unique = make_unique && !is.null(ident)
     )
     # Add to metadata
     object@meta.data$hitype <- cell_types[

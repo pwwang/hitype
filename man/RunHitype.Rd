@@ -20,6 +20,7 @@ RunHitype(object, ...)
   layer = "data",
   assay = NULL,
   scaled = FALSE,
+  ident = NULL,
   ...
 )
 }
@@ -49,6 +50,11 @@ numeric vectors as the weights.}
 \item{assay}{The assay to use for \code{GetAssayData}}
 
 \item{scaled}{Whether the data from \code{GetAssayData} is scaled}
+
+\item{ident}{The identity column to use majority voting to assign cell types to clusters
+If NULL, return cell-level assignments for each cell.
+If "ident", return cluster(identity)-level assignments for each cluster.
+if a character, return cluster-level assignments for each cluster based on the specified column in the metadata.}
 }
 \value{
 The Seurat object with the cell types (named \code{hitype}) added to the
