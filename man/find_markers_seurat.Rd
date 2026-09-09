@@ -4,15 +4,7 @@
 \alias{find_markers_seurat}
 \title{Find markers with Seurat FindAllMarkers}
 \usage{
-find_markers_seurat(
-  exprs,
-  clusters,
-  top,
-  min_log2fc,
-  min_pct,
-  pos_only,
-  include_negative
-)
+find_markers_seurat(exprs, clusters, top, min_log2fc, min_pct, pos_only)
 }
 \description{
 Find markers with Seurat FindAllMarkers

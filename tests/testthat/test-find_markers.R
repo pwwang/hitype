@@ -56,9 +56,9 @@ test_that("find_markers() fc recovers known over-expressed markers", {
     }
 })
 
-test_that("find_markers() include_negative fills geneSymbolmore2", {
+test_that("find_markers() !pos_only fills geneSymbolmore2", {
     res <- find_markers(
-        exprs, clusters, method = "fc", top = 8, include_negative = TRUE,
+        exprs, clusters, method = "fc", top = 8, pos_only = FALSE,
         format = "db"
     )
     expect_false(all(res$geneSymbolmore2 == ""))
@@ -187,7 +187,7 @@ test_that("find_markers() defaults to the universal marker format", {
 
 test_that("find_markers() universal format carries negative markers", {
     res <- find_markers(
-        exprs, clusters, method = "fc", top = 8, include_negative = TRUE
+        exprs, clusters, method = "fc", top = 8, pos_only = FALSE
     )
     expect_true(any(res$direction == "negative"))
     expect_true(any(res$direction == "positive"))
@@ -200,7 +200,7 @@ test_that("find_markers() universal format carries negative markers", {
 
 test_that("find_markers() universal output round-trips through gs_prepare", {
     res <- find_markers(
-        exprs, clusters, method = "fc", top = 8, include_negative = TRUE
+        exprs, clusters, method = "fc", top = 8, pos_only = FALSE
     )
     gs <- gs_prepare(res)
     expect_null(gs$cell_names)

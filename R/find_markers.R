@@ -32,8 +32,6 @@
 #' @param pos_only Only keep genes that are higher in the cell type than
 #'  in the rest of the cells (positive markers). If `FALSE`, all genes
 #'  passing `min_pct` are considered, ranked by score.
-#' @param include_negative If `TRUE`, also fill the `geneSymbolmore2`
-#'  column with the top down-regulated markers per cell type.
 #' @param level The hierarchy level to write into the output data frame.
 #' @param format The format of the output data frame. One of
 #'   `"universal"` (default) or `"db"` (the hitype/ScType wide format).
@@ -68,7 +66,6 @@ find_markers <- function(
     min_log2fc = 0.25,
     min_pct = 0.1,
     pos_only = TRUE,
-    include_negative = FALSE,
     level = 1,
     format = c("universal", "db")
 ) {
@@ -169,15 +166,15 @@ find_markers <- function(
         method,
         fc = find_markers_fc(
             exprs, clusters, top, min_log2fc, min_pct,
-            pos_only, include_negative
+            pos_only
         ),
         seurat = find_markers_seurat(
             exprs, clusters, top, min_log2fc, min_pct,
-            pos_only, include_negative
+            pos_only
         ),
         presto = find_markers_presto(
             exprs, clusters, top, min_log2fc, min_pct,
-            pos_only, include_negative
+            pos_only
         )
     )
 
@@ -220,8 +217,7 @@ find_markers_fc <- function(
     top,
     min_log2fc,
     min_pct,
-    pos_only,
-    include_negative
+    pos_only
 ) {
     cts <- as.character(unique(clusters))
     cells <- names(clusters)
@@ -252,7 +248,7 @@ find_markers_fc <- function(
             markers1[[ct]] <- paste(rownames(exprs)[take], collapse = ",")
         }
 
-        if (include_negative) {
+        if (!pos_only) {
             idx2 <- which(log2fc <= -min_log2fc & pct_out >= min_pct)
             if (length(idx2) > 0) {
                 ord2 <- order(score[idx2], decreasing = FALSE)
@@ -274,8 +270,7 @@ find_markers_seurat <- function(
     top,
     min_log2fc,
     min_pct,
-    pos_only,
-    include_negative
+    pos_only
 ) {
     if (!inherits(exprs, "Seurat")) {
         stop(
@@ -287,7 +282,7 @@ find_markers_seurat <- function(
     Seurat::Idents(exprs) <- unname(clusters[colnames(exprs)])
     fam <- Seurat::FindAllMarkers(
         exprs,
-        only.pos = pos_only || include_negative,
+        only.pos = pos_only,
         logfc.threshold = min_log2fc,
         min.pct = min_pct
     )
@@ -311,7 +306,7 @@ find_markers_seurat <- function(
             take <- sub$gene[ord[seq_len(min(as.integer(top), nrow(sub)))]]
             markers1[[ct]] <- paste(take, collapse = ",")
         }
-        if (include_negative && nrow(sub) > 0) {
+        if (!pos_only && nrow(sub) > 0) {
             neg <- sub[sub[[logfc_col]] < 0, , drop = FALSE]
             if (nrow(neg) > 0) {
                 ord2 <- order(neg[[logfc_col]], decreasing = FALSE)
@@ -333,8 +328,7 @@ find_markers_presto <- function(
     top,
     min_log2fc,
     min_pct,
-    pos_only,
-    include_negative
+    pos_only
 ) {
     if (!requireNamespace("presto", quietly = TRUE)) {
         stop(
@@ -388,7 +382,7 @@ find_markers_presto <- function(
             ]
             markers1[[ct]] <- paste(take, collapse = ",")
         }
-        if (include_negative) {
+        if (!pos_only) {
             idx2 <- which(sub$logFC <= -min_log2fc)
             if ("pct_out" %in% colnames(sub)) {
                 idx2 <- idx2[pct_out[idx2] >= min_pct]

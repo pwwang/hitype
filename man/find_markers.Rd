@@ -12,7 +12,6 @@ find_markers(
   min_log2fc = 0.25,
   min_pct = 0.1,
   pos_only = TRUE,
-  include_negative = FALSE,
   level = 1,
   format = c("universal", "db")
 )
@@ -47,9 +46,6 @@ the gene.}
 \item{pos_only}{Only keep genes that are higher in the cell type than
 in the rest of the cells (positive markers). If \code{FALSE}, all genes
 passing \code{min_pct} are considered, ranked by score.}
-
-\item{include_negative}{If \code{TRUE}, also fill the \code{geneSymbolmore2}
-column with the top down-regulated markers per cell type.}
 
 \item{level}{The hierarchy level to write into the output data frame.}
 
