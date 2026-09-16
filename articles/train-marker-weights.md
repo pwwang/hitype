@@ -20,7 +20,11 @@ keras::install_keras()
 ```
 
 To train the weights for the markers, firstly, we have to have the
-markers in the original `ScType` format:
+markers. They can be in the universal marker format (a long table with
+`cell_type` and `gene` columns — what
+[`find_markers()`](https://pwwang.github.io/hitype/reference/find_markers.md)
+returns by default) or in the original `ScType` format. Here we use the
+`ScType` format:
 
 ``` r
 markers <- data.frame(
@@ -90,29 +94,135 @@ weights <- train_weights(
     method = "glmnet",
     cv_folds = 5
 )
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
+#> Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one
+#> multinomial or binomial class has fewer than 8 observations; dangerous ground
 #> # A tibble: 9 × 5
-#>   Level Cluster      CellType     Score  Margin
-#>   <dbl> <fct>        <chr>        <dbl>   <dbl>
-#> 1     1 Naive CD4+ T Naive CD4+ T  2.71  2.58  
-#> 2     1 CD14+ Mono   CD14+ Mono   10.2   5.39  
-#> 3     1 Memory CD4+  Memory CD4+   2.79  0.922 
-#> 4     1 B            B             7.80  8.14  
-#> 5     1 CD8+ T       NK            5.60  0.0259
-#> 6     1 FCFR3A+ Mono FCFR3A+ Mono 14.7  10.8   
-#> 7     1 NK           NK           14.8   9.93  
-#> 8     1 DC           DC           27.4  23.1   
-#> 9     1 Platelet     Platelet     33.6  33.3
+#>   Level Cluster      CellType     Score Margin
+#>   <dbl> <fct>        <chr>        <dbl>  <dbl>
+#> 1     1 Naive CD4+ T Naive CD4+ T 0.258  0.184
+#> 2     1 CD14+ Mono   CD14+ Mono   3.48   2.29 
+#> 3     1 Memory CD4+  Memory CD4+  0.241  0.179
+#> 4     1 B            B            3.35   3.41 
+#> 5     1 CD8+ T       NK           1.61   1.11 
+#> 6     1 FCFR3A+ Mono FCFR3A+ Mono 3.63   2.42 
+#> 7     1 NK           NK           4.02   2.13 
+#> 8     1 DC           DC           3.36   0.211
+#> 9     1 Platelet     Platelet     5.40   5.08
 weights
-#>       cellName level geneSymbolmore2    geneSymbolmore1
-#> 1            B     1                           MS4A1+++
-#> 2   CD14+ Mono     1                     CD14+++,LYZ+++
-#> 3       CD8+ T     1                            CD8A+++
-#> 4           DC     1                  FCER1A+++,CST3+++
-#> 5 FCFR3A+ Mono     1                 FCGR3A+++,MS4A7+++
-#> 6  Memory CD4+     1                  IL7R+++,S100A4+++
-#> 7 Naive CD4+ T     1                    IL7R+++,CCR7+++
-#> 8           NK     1                    GNLY+++,NKG7+++
-#> 9     Platelet     1                            PPBP+++
+#>       cell_type   gene direction     weight level
+#> 1             B  MS4A1  positive 1.69320144     1
+#> 2    CD14+ Mono   CD14  positive 0.53524571     1
+#> 3    CD14+ Mono    LYZ  positive 2.51422683     1
+#> 4        CD8+ T   CD8A  positive 0.48281891     1
+#> 5            DC FCER1A  positive 0.71639601     1
+#> 6            DC   CST3  positive 0.94143220     1
+#> 7  FCFR3A+ Mono FCGR3A  positive 1.63792443     1
+#> 8  FCFR3A+ Mono  MS4A7  positive 0.56935406     1
+#> 9   Memory CD4+   IL7R  positive 0.43576192     1
+#> 10  Memory CD4+ S100A4  positive 0.83474328     1
+#> 11 Naive CD4+ T   IL7R  positive 0.09914819     1
+#> 12 Naive CD4+ T   CCR7  positive 0.33365715     1
+#> 13           NK   GNLY  positive 1.01118811     1
+#> 14           NK   NKG7  positive 1.32292941     1
+#> 15     Platelet   PPBP  positive 0.71680089     1
 ```
 
 Other methods are available via `method =` (e.g. `method = "lrp"` for
@@ -176,10 +286,11 @@ summary(assigned)
 
 [`find_markers()`](https://pwwang.github.io/hitype/reference/find_markers.md)
 discovers marker genes from a labeled dataset (e.g.
-`pbmc$seurat_clusters`) and returns them directly in the database format
-consumed by
-[`gs_prepare()`](https://pwwang.github.io/hitype/reference/gs_prepare.md),
-with dependency-light fold-change (`fc`, default), `Seurat`, or `presto`
+`pbmc$seurat_clusters`) and returns them directly in the universal
+marker format consumed by
+[`gs_prepare()`](https://pwwang.github.io/hitype/reference/gs_prepare.md)
+(pass `format = "db"` for the legacy wide ScType-style format), with
+dependency-light fold-change (`fc`, default), `Seurat`, or `presto`
 backends:
 
 ``` r

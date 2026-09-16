@@ -36,8 +36,12 @@ prepare_data_for_training(
 
 - clusters:
 
-  A named vector of cluster ids If `exprs` is a seurat object, this is
-  ignored. The cluster ids are taken from the seurat object.
+  The cell types of the cells. When `exprs` is a Seurat object, it can
+  be `NULL` (default) to take the cell types from
+  [`Seurat::Idents()`](https://satijalab.github.io/seurat-object/reference/Idents.html),
+  or a column name in the `meta.data` of the Seurat object that holds
+  the cell type of each cell. When `exprs` is a matrix, it should be a
+  named vector of cell types (names - cell names).
 
 ## Value
 

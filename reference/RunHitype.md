@@ -18,9 +18,12 @@ RunHitype(
   threshold = NULL,
   level_weights = function(l) 1/(10^(l - 1)),
   make_unique = FALSE,
+  norm = "sqrt",
+  use_sensitivity = TRUE,
   layer = "data",
   assay = NULL,
   scaled = FALSE,
+  ident = NULL,
   ...
 )
 ```
@@ -62,6 +65,17 @@ RunHitype(
 
   Whether to make the cell type names unique
 
+- norm:
+
+  The normalization method for `hitype_score`, passed through as-is. One
+  of "sqrt", "weight", "none". "weight" is recommended when scoring with
+  learned weights.
+
+- use_sensitivity:
+
+  Whether to weight markers by their sensitivity in `hitype_score`.
+  `FALSE` is recommended when scoring with learned weights.
+
 - layer:
 
   The layer to use for `GetAssayData`
@@ -73,6 +87,14 @@ RunHitype(
 - scaled:
 
   Whether the data from `GetAssayData` is scaled
+
+- ident:
+
+  The identity column to use majority voting to assign cell types to
+  clusters If NULL, return cell-level assignments for each cell. If
+  "ident", return cluster(identity)-level assignments for each cluster.
+  if a character, return cluster-level assignments for each cluster
+  based on the specified column in the metadata.
 
 ## Value
 

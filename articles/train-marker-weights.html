@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">hitype</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -88,7 +88,11 @@ For <code>lrp</code> you would additionally run:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"innsight"</span><span class="op">)</span></span>
 <span><span class="fu">keras</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/keras/man/install_keras.html" class="external-link">install_keras</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>To train the weights for the markers, firstly, we have to have the
-markers in the original <code>ScType</code> format:</p>
+markers. They can be in the universal marker format (a long table with
+<code>cell_type</code> and <code>gene</code> columns — what
+<code><a href="../reference/find_markers.html">find_markers()</a></code> returns by default) or in the original
+<code>ScType</code> format. Here we use the <code>ScType</code>
+format:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">markers</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>    cellName <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
@@ -152,29 +156,135 @@ and less prone to overfitting a single split:</p>
 <span>    method <span class="op">=</span> <span class="st">"glmnet"</span>,</span>
 <span>    cv_folds <span class="op">=</span> <span class="fl">5</span></span>
 <span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
+<span><span class="co">#&gt; Warning in lognet(x, is.sparse, y, weights, offset, alpha, nobs, nvars, : one</span></span>
+<span><span class="co">#&gt; multinomial or binomial class has fewer than 8 observations; dangerous ground</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 9 × 5</span></span></span>
-<span><span class="co">#&gt;   Level Cluster      CellType     Score  Margin</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     1 Naive CD4+ T Naive CD4+ T  2.71  2.58  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     1 CD14+ Mono   CD14+ Mono   10.2   5.39  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     1 Memory CD4+  Memory CD4+   2.79  0.922 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1 B            B             7.80  8.14  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1 CD8+ T       NK            5.60  0.025<span style="text-decoration: underline;">9</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1 FCFR3A+ Mono FCFR3A+ Mono 14.7  10.8   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">7</span>     1 NK           NK           14.8   9.93  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">8</span>     1 DC           DC           27.4  23.1   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">9</span>     1 Platelet     Platelet     33.6  33.3</span></span>
+<span><span class="co">#&gt;   Level Cluster      CellType     Score Margin</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     1 Naive CD4+ T Naive CD4+ T 0.258  0.184</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     1 CD14+ Mono   CD14+ Mono   3.48   2.29 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     1 Memory CD4+  Memory CD4+  0.241  0.179</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1 B            B            3.35   3.41 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1 CD8+ T       NK           1.61   1.11 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     1 FCFR3A+ Mono FCFR3A+ Mono 3.63   2.42 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">7</span>     1 NK           NK           4.02   2.13 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">8</span>     1 DC           DC           3.36   0.211</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">9</span>     1 Platelet     Platelet     5.40   5.08</span></span>
 <span><span class="va">weights</span></span>
-<span><span class="co">#&gt;       cellName level geneSymbolmore2    geneSymbolmore1</span></span>
-<span><span class="co">#&gt; 1            B     1                           MS4A1+++</span></span>
-<span><span class="co">#&gt; 2   CD14+ Mono     1                     CD14+++,LYZ+++</span></span>
-<span><span class="co">#&gt; 3       CD8+ T     1                            CD8A+++</span></span>
-<span><span class="co">#&gt; 4           DC     1                  FCER1A+++,CST3+++</span></span>
-<span><span class="co">#&gt; 5 FCFR3A+ Mono     1                 FCGR3A+++,MS4A7+++</span></span>
-<span><span class="co">#&gt; 6  Memory CD4+     1                  IL7R+++,S100A4+++</span></span>
-<span><span class="co">#&gt; 7 Naive CD4+ T     1                    IL7R+++,CCR7+++</span></span>
-<span><span class="co">#&gt; 8           NK     1                    GNLY+++,NKG7+++</span></span>
-<span><span class="co">#&gt; 9     Platelet     1                            PPBP+++</span></span></code></pre></div>
+<span><span class="co">#&gt;       cell_type   gene direction     weight level</span></span>
+<span><span class="co">#&gt; 1             B  MS4A1  positive 1.69320144     1</span></span>
+<span><span class="co">#&gt; 2    CD14+ Mono   CD14  positive 0.53524571     1</span></span>
+<span><span class="co">#&gt; 3    CD14+ Mono    LYZ  positive 2.51422683     1</span></span>
+<span><span class="co">#&gt; 4        CD8+ T   CD8A  positive 0.48281891     1</span></span>
+<span><span class="co">#&gt; 5            DC FCER1A  positive 0.71639601     1</span></span>
+<span><span class="co">#&gt; 6            DC   CST3  positive 0.94143220     1</span></span>
+<span><span class="co">#&gt; 7  FCFR3A+ Mono FCGR3A  positive 1.63792443     1</span></span>
+<span><span class="co">#&gt; 8  FCFR3A+ Mono  MS4A7  positive 0.56935406     1</span></span>
+<span><span class="co">#&gt; 9   Memory CD4+   IL7R  positive 0.43576192     1</span></span>
+<span><span class="co">#&gt; 10  Memory CD4+ S100A4  positive 0.83474328     1</span></span>
+<span><span class="co">#&gt; 11 Naive CD4+ T   IL7R  positive 0.09914819     1</span></span>
+<span><span class="co">#&gt; 12 Naive CD4+ T   CCR7  positive 0.33365715     1</span></span>
+<span><span class="co">#&gt; 13           NK   GNLY  positive 1.01118811     1</span></span>
+<span><span class="co">#&gt; 14           NK   NKG7  positive 1.32292941     1</span></span>
+<span><span class="co">#&gt; 15     Platelet   PPBP  positive 0.71680089     1</span></span></code></pre></div>
 <p>Other methods are available via <code>method =</code>
 (e.g. <code>method = "lrp"</code> for the deep-learning LRP backend,
 <code>method = "uniform"</code> for the equal-weight baseline). For the
@@ -232,9 +342,11 @@ transfer):</p>
 </h2>
 <p><code><a href="../reference/find_markers.html">find_markers()</a></code> discovers marker genes from a labeled
 dataset (e.g. <code>pbmc$seurat_clusters</code>) and returns them
-directly in the database format consumed by <code><a href="../reference/gs_prepare.html">gs_prepare()</a></code>,
-with dependency-light fold-change (<code>fc</code>, default),
-<code>Seurat</code>, or <code>presto</code> backends:</p>
+directly in the universal marker format consumed by
+<code><a href="../reference/gs_prepare.html">gs_prepare()</a></code> (pass <code>format = "db"</code> for the
+legacy wide ScType-style format), with dependency-light fold-change
+(<code>fc</code>, default), <code>Seurat</code>, or <code>presto</code>
+backends:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">markers</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/find_markers.html">find_markers</a></span><span class="op">(</span><span class="va">pbmc</span>, clusters <span class="op">=</span> <span class="va">pbmc</span><span class="op">$</span><span class="va">seurat_clusters</span>, method <span class="op">=</span> <span class="st">"fc"</span><span class="op">)</span></span>
 <span><span class="va">weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/train_weights.html">train_weights</a></span><span class="op">(</span>path_to_gs <span class="op">=</span> <span class="va">markers</span>, exprs <span class="op">=</span> <span class="va">pbmc</span>, method <span class="op">=</span> <span class="st">"glmnet"</span><span class="op">)</span></span>

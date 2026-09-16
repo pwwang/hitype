@@ -5,5 +5,5 @@ Logistic regression weights (one-vs-rest)
 ## Usage
 
 ``` r
-train_lr(data, clusters, cv_folds = 1)
+train_lr(data, clusters, cv_folds = 1, return_models = FALSE)
 ```

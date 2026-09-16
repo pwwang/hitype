@@ -1,6 +1,6 @@
-# Find markers with Seurat FindAllMarkers
+# Find markers with Seurat FindAllMarkers / FindMarkers
 
-Find markers with Seurat FindAllMarkers
+Find markers with Seurat FindAllMarkers / FindMarkers
 
 ## Usage
 
@@ -11,7 +11,8 @@ find_markers_seurat(
   top,
   min_log2fc,
   min_pct,
-  only_pos,
-  include_negative
+  pos_only,
+  refs,
+  max_pct_out
 )
 ```

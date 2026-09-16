@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">hitype</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -78,9 +78,11 @@ you have multiple levels of gene sets.</p></dd>
 
 
 <dt id="arg-clusters">clusters<a class="anchor" aria-label="anchor" href="#arg-clusters"></a></dt>
-<dd><p>A named vector of cluster ids
-If <code>exprs</code> is a seurat object, this is ignored. The cluster ids are
-taken from the seurat object.</p></dd>
+<dd><p>The cell types of the cells. When <code>exprs</code> is a Seurat
+object, it can be <code>NULL</code> (default) to take the cell types from
+<code><a href="https://satijalab.github.io/seurat-object/reference/Idents.html" class="external-link">Seurat::Idents()</a></code>, or a column name in the <code>meta.data</code> of the Seurat
+object that holds the cell type of each cell. When <code>exprs</code> is a matrix,
+it should be a named vector of cell types (names - cell names).</p></dd>
 
 </dl></div>
     <div class="section level2">

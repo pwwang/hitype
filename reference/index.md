@@ -8,6 +8,8 @@
   : Calculate cell type scores
 - [`hitype_assign()`](https://pwwang.github.io/hitype/reference/hitype_assign.md)
   : Generate scores for cell types for each level
+- [`hitype_score_models()`](https://pwwang.github.io/hitype/reference/hitype_score_models.md)
+  : Score cells with the models trained by train_weights()
 - [`RunHitype()`](https://pwwang.github.io/hitype/reference/RunHitype.md)
   : Run hitype_assign for a Seurat object
 

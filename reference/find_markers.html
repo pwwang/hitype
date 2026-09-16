@@ -19,7 +19,7 @@ be log-normalized."><meta property="og:image" content="https://pwwang.github.io/
 
     <a class="navbar-brand me-2" href="../index.html">hitype</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -68,12 +68,14 @@ be log-normalized.</p>
 <span>  <span class="va">exprs</span>,</span>
 <span>  clusters <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"fc"</span>, <span class="st">"seurat"</span>, <span class="st">"presto"</span><span class="op">)</span>,</span>
-<span>  top <span class="op">=</span> <span class="fl">20</span>,</span>
+<span>  top <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">10</span><span class="op">)</span>,</span>
 <span>  min_log2fc <span class="op">=</span> <span class="fl">0.25</span>,</span>
 <span>  min_pct <span class="op">=</span> <span class="fl">0.1</span>,</span>
-<span>  only_pos <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  include_negative <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  level <span class="op">=</span> <span class="fl">1</span></span>
+<span>  against <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  max_pct_out <span class="op">=</span> <span class="fl">0.75</span>,</span>
+<span>  pos_only <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  level <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"universal"</span>, <span class="st">"db"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -111,12 +113,16 @@ Requires the presto package.</p></dd>
 
 
 <dt id="arg-top">top<a class="anchor" aria-label="anchor" href="#arg-top"></a></dt>
-<dd><p>Number of markers to return per cell type.</p></dd>
+<dd><p>Number of markers to return per cell type: a single number
+applied to both positive and negative markers, or a length-2 vector
+<code>c(n_positive, n_negative)</code> budgeting each direction separately
+(default <code>c(10, 10)</code>). The negative budget is only used when
+<code>pos_only = FALSE</code>.</p></dd>
 
 
 <dt id="arg-min-log-fc">min_log2fc<a class="anchor" aria-label="anchor" href="#arg-min-log-fc"></a></dt>
 <dd><p>Minimum log2 fold change for a gene to be kept as a
-marker (when <code>only_pos = TRUE</code>).</p></dd>
+marker (when <code>pos_only = TRUE</code>).</p></dd>
 
 
 <dt id="arg-min-pct">min_pct<a class="anchor" aria-label="anchor" href="#arg-min-pct"></a></dt>
@@ -124,26 +130,74 @@ marker (when <code>only_pos = TRUE</code>).</p></dd>
 the gene.</p></dd>
 
 
-<dt id="arg-only-pos">only_pos<a class="anchor" aria-label="anchor" href="#arg-only-pos"></a></dt>
+<dt id="arg-against">against<a class="anchor" aria-label="anchor" href="#arg-against"></a></dt>
+<dd><p>Restrict the reference group a cell type is compared
+against (by default one-vs-rest, i.e. all other cells). One of:</p><dl><dt><code>NULL</code></dt>
+<dd><p>One-vs-rest (default).</p></dd>
+
+<dt>a character vector of cell types</dt>
+<dd><p>Only the cells of those
+types form the reference group: <code>pct_out</code>, <code>log2fc</code> and the score
+are computed against them instead of all the other cells, which
+recovers sibling-specific markers shared with the rest of the
+cells. A type listed in <code>against</code> cannot use its own cells as the
+reference, so they are excluded from its reference group; if no
+other listed type remains, no markers are returned for it.</p></dd>
+
+<dt><code>"nearest"</code></dt>
+<dd><p>For each cell type, the single most similar other
+type is used as its reference group. Similarity is the Pearson
+correlation between the mean expression profiles of the two types
+(computed once per call over the input matrix), and the resolved
+type is then used exactly like an explicit <code>against</code> entry.</p></dd>
+
+
+</dl><p>An error is raised if <code>against</code> names a cell type not present in the
+data (available types are listed) or if it names the only cell type
+in the data (a type cannot be compared against itself). Negative
+markers (<code>pos_only = FALSE</code>) are extracted as before as genes low in
+the type vs the rest of the cells, but when <code>against</code> is set they
+must ALSO satisfy <code>log2fc &lt;= -min_log2fc</code> against the reference
+group, so that sibling-specific negative markers are found.
+For <code>method = "seurat"</code>, <code>against</code> is implemented with per-type
+two-group <code>Seurat::FindMarkers(ident.1 = type, ident.2 = against)</code>
+calls (<code>"nearest"</code> is resolved to the per-type reference types
+first); <code>method = "presto"</code> does not support <code>against</code> and raises an
+error.</p></dd>
+
+
+<dt id="arg-max-pct-out">max_pct_out<a class="anchor" aria-label="anchor" href="#arg-max-pct-out"></a></dt>
+<dd><p>Drop positive-marker candidates expressed in more
+than this fraction of ALL other cells (the one-vs-rest <code>pct_out</code>,
+computed over all cells not of the type even when <code>against</code> is set),
+guarding against pan-lineage genes up-regulated in most other cell
+types. Negative markers are not subject to this guard. A single
+aggregated warning reports the number of dropped candidates per cell
+type. Default <code>0.75</code>.</p></dd>
+
+
+<dt id="arg-pos-only">pos_only<a class="anchor" aria-label="anchor" href="#arg-pos-only"></a></dt>
 <dd><p>Only keep genes that are higher in the cell type than
 in the rest of the cells (positive markers). If <code>FALSE</code>, all genes
 passing <code>min_pct</code> are considered, ranked by score.</p></dd>
 
 
-<dt id="arg-include-negative">include_negative<a class="anchor" aria-label="anchor" href="#arg-include-negative"></a></dt>
-<dd><p>If <code>TRUE</code>, also fill the <code>geneSymbolmore2</code>
-column with the top down-regulated markers per cell type.</p></dd>
-
-
 <dt id="arg-level">level<a class="anchor" aria-label="anchor" href="#arg-level"></a></dt>
-<dd><p>The hierarchy level to write into the output database.</p></dd>
+<dd><p>The hierarchy level to write into the output data frame.</p></dd>
+
+
+<dt id="arg-format">format<a class="anchor" aria-label="anchor" href="#arg-format"></a></dt>
+<dd><p>The format of the output data frame. One of
+<code>"universal"</code> (default) or <code>"db"</code> (the hitype/ScType wide format).</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A data frame in the hitype db format with columns <code>cellName</code>,
-<code>geneSymbolmore1</code>, <code>geneSymbolmore2</code> and <code>level</code>, directly consumable
-by <code><a href="gs_prepare.html">gs_prepare()</a></code>.</p>
+    <p>A data frame in the universal marker format (default) with
+columns <code>cell_type</code>, <code>gene</code>, <code>direction</code> and <code>level</code>, or in the hitype
+db format (<code>format = "db"</code>) with columns <code>cellName</code>,
+<code>geneSymbolmore1</code>, <code>geneSymbolmore2</code> and <code>level</code>. Both are directly
+consumable by <code><a href="gs_prepare.html">gs_prepare()</a></code>.</p>
     </div>
 
     <div class="section level2">
@@ -159,11 +213,9 @@ by <code><a href="gs_prepare.html">gs_prepare()</a></code>.</p>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">exprs</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">markers</span> <span class="op">&lt;-</span> <span class="fu">find_markers</span><span class="op">(</span><span class="va">exprs</span>, <span class="va">clusters</span>, method <span class="op">=</span> <span class="st">"fc"</span>, top <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Dropped 16 positive-marker candidate(s) expressed in more than 75% of other cells (max_pct_out): Tcell: 9, Bcell: 4, Monocyte: 3</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">markers</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   cellName                    geneSymbolmore1 geneSymbolmore2 level</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    Tcell gene11,gene13,gene20,gene21,gene25                     1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2    Bcell         gene7,gene14,gene17,gene38                     1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 Monocyte               gene21,gene26,gene38                     1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

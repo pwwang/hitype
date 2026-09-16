@@ -11,7 +11,7 @@ find_markers_presto(
   top,
   min_log2fc,
   min_pct,
-  only_pos,
-  include_negative
+  pos_only,
+  max_pct_out
 )
 ```
