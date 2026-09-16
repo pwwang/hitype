@@ -8,6 +8,7 @@ reference:
       - gs_prepare
       - hitype_score
       - hitype_assign
+      - hitype_score_models
       - RunHitype
   - title: Marker weight training
     contents:
