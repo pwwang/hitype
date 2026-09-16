@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">hitype</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,6 +43,7 @@
 <h2 class="pkg-version" data-toc-text="0.1.1" id="version-011">Version 0.1.1<a class="anchor" aria-label="anchor" href="#version-011"></a></h2>
 <ul><li>✨ <code><a href="../reference/find_markers.html">find_markers()</a></code>: <code>against</code> argument for sibling-aware extraction (<code>"nearest"</code> = most-correlated type), balanced <code>top = c(pos, neg)</code> budgets (default <code>c(10, 10)</code>), and <code>max_pct_out</code> pan-lineage exclusion guard.</li>
 <li>✨ Add model-based scoring: <code>train_weights(return_models = TRUE)</code> persists per-type linear models (glmnet/lr) and <code><a href="../reference/hitype_score_models.html">hitype_score_models()</a></code> scores cells with the model equations (linear predictors) and a margin-based Unknown threshold.</li>
+<li>feat: enhance train_weights functions to support class-specific markers and update documentation</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="version-010">Version 0.1.0<a class="anchor" aria-label="anchor" href="#version-010"></a></h2>
