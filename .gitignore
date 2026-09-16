@@ -13,6 +13,6 @@ Rplots.pdf
 .codegraph
 benchmark_datasets.md
 marker_strategy.md
-paper_plan.md
+paper_plan.md*
 tool_configs_pbmc3k.md
 debug.ipynb

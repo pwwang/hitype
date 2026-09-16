@@ -4,9 +4,23 @@
 \alias{train_xgb}
 \title{XGBoost gain-based importance weights}
 \usage{
-train_xgb(data, clusters)
+train_xgb(data, clusters, class_markers = NULL)
+}
+\arguments{
+\item{data}{The prepared training data, see
+\code{\link[=prepare_data_for_training]{prepare_data_for_training()}}}
+
+\item{clusters}{The cell type of each cell of \code{data$z}}
+
+\item{class_markers}{A named list of the marker genes of each cell type
+(names are the cell types, values the gene vectors). Each cell type
+then reports its own markers instead of every candidate feature.
+\code{NULL} (default) keeps the previous behaviour of reporting every
+candidate feature for every cell type. See \code{\link[=class_features]{class_features()}}.}
 }
 \description{
-XGBoost gain-based importance weights
+One booster per cell type (that cell type against all the others), so the
+gain of a marker is learned for the cell type it is reported for instead
+of being shared by every cell type.
 }
 \keyword{internal}

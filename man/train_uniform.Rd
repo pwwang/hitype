@@ -4,9 +4,22 @@
 \alias{train_uniform}
 \title{Uniform weights (baseline)}
 \usage{
-train_uniform(data, clusters)
+train_uniform(data, clusters, class_markers = NULL)
+}
+\arguments{
+\item{data}{The prepared training data, see
+\code{\link[=prepare_data_for_training]{prepare_data_for_training()}}}
+
+\item{clusters}{The cell type of each cell of \code{data$z}}
+
+\item{class_markers}{A named list of the marker genes of each cell type
+(names are the cell types, values the gene vectors). Each cell type
+then reports its own markers instead of every candidate feature.
+\code{NULL} (default) keeps the previous behaviour of reporting every
+candidate feature for every cell type. See \code{\link[=class_features]{class_features()}}.}
 }
 \description{
-Uniform weights (baseline)
+Every marker of a cell type gets the same weight, so the cell type is
+defined by its own markers only.
 }
 \keyword{internal}

@@ -162,14 +162,19 @@ train_weights <- function(
         clusters <- clusters[rest_idx]
     }
 
+    # The markers of each cell type, so that the methods that emit one row
+    # per cell type x candidate feature can report each cell type's own
+    # markers instead of the union of all of them
+    class_markers <- lapply(data$gs, function(x) x$markers)
+
     result <- switch(
         method,
-        uniform    = train_uniform(data, clusters),
+        uniform    = train_uniform(data, clusters, class_markers),
         correlation = train_correlation(data, clusters),
         lr         = train_lr(data, clusters, cv_folds, return_models),
         glmnet     = train_glmnet(data, clusters, cv_folds, return_models),
-        rf         = train_rf(data, clusters),
-        xgb        = train_xgb(data, clusters),
+        rf         = train_rf(data, clusters, class_markers),
+        xgb        = train_xgb(data, clusters, class_markers),
         lrp        = train_lrp(
             data, clusters, uclusters, cv_folds,
             epochs, batch_size, data_split
@@ -230,17 +235,54 @@ train_weights <- function(
 # Weight-learning methods
 # ============================================================================
 
-#' Uniform weights (baseline)
+#' The features a cell type reports
+#'
+#' The cell type's own markers when `class_markers` is given, every
+#' candidate feature otherwise (the previous behaviour).
+#'
+#' @param class_markers A named list of the marker genes of each cell type,
+#'  or `NULL`
+#' @param ct The cell type
+#' @param markers All candidate features
+#' @return The feature vector of `ct`
 #' @keywords internal
-train_uniform <- function(data, clusters) {
+class_features <- function(class_markers, ct, markers) {
+    if (is.null(class_markers)) {
+        return(markers)
+    }
+    if (!ct %in% names(class_markers)) {
+        # a cell type the marker table does not cover: no markers to report
+        return(character(0))
+    }
+    class_markers[[ct]]
+}
+
+#' Uniform weights (baseline)
+#'
+#' Every marker of a cell type gets the same weight, so the cell type is
+#' defined by its own markers only.
+#'
+#' @param data The prepared training data, see
+#'  [prepare_data_for_training()]
+#' @param clusters The cell type of each cell of `data$z`
+#' @param class_markers A named list of the marker genes of each cell type
+#'  (names are the cell types, values the gene vectors). Each cell type
+#'  then reports its own markers instead of every candidate feature.
+#'  `NULL` (default) keeps the previous behaviour of reporting every
+#'  candidate feature for every cell type. See [class_features()].
+#' @keywords internal
+train_uniform <- function(data, clusters, class_markers = NULL) {
     uctypes <- unique(data$clusters)
     markers <- colnames(data$z)
-    expand.grid(
-        output_node = uctypes,
-        feature = markers,
-        value = 1,
-        stringsAsFactors = FALSE
-    )
+    out <- lapply(uctypes, function(ct) {
+        data.frame(
+            output_node = ct,
+            feature = class_features(class_markers, ct, markers),
+            value = 1,
+            stringsAsFactors = FALSE
+        )
+    })
+    do.call(rbind, out)
 }
 
 #' Correlation-based weights
@@ -489,8 +531,21 @@ train_glmnet <- function(data, clusters, cv_folds = 5, return_models = FALSE) {
 }
 
 #' Random forest permutation importance weights
+#'
+#' One forest per cell type (that cell type against all the others), so the
+#' importance of a marker is learned for the cell type it is reported for
+#' instead of being shared by every cell type.
+#'
+#' @param data The prepared training data, see
+#'  [prepare_data_for_training()]
+#' @param clusters The cell type of each cell of `data$z`
+#' @param class_markers A named list of the marker genes of each cell type
+#'  (names are the cell types, values the gene vectors). Each cell type
+#'  then reports its own markers instead of every candidate feature.
+#'  `NULL` (default) keeps the previous behaviour of reporting every
+#'  candidate feature for every cell type. See [class_features()].
 #' @keywords internal
-train_rf <- function(data, clusters) {
+train_rf <- function(data, clusters, class_markers = NULL) {
     if (!requireNamespace("ranger", quietly = TRUE)) {
         stop("Package 'ranger' is required for method='rf'. ",
              "Install with: install.packages('ranger')")
@@ -498,22 +553,25 @@ train_rf <- function(data, clusters) {
     uctypes <- unique(data$clusters)
     markers <- colnames(data$z)
     zdf <- as.data.frame(data$z)
-    zdf$cluster <- factor(clusters)
-
-    fit <- ranger::ranger(
-        cluster ~ ., data = zdf,
-        importance = "permutation",
-        num.trees = 500
-    )
-    imp <- ranger::importance(fit)
-    imp[is.na(imp)] <- 0
 
     out <- lapply(uctypes, function(ct) {
-        # Overall importance — same values for all cell types
+        fit <- ranger::ranger(
+            # The `x`/`y` interface, not `cluster ~ .`: the formula interface
+            # rejects the non-syntactic gene symbols that real marker tables
+            # contain (e.g. `RP11-206L10.2`, `2-Mar`, `4-Sep`), which made
+            # method = "rf" fail outright on pbmc3k-scale data.
+            x = zdf[, markers, drop = FALSE],
+            y = factor(clusters == ct),
+            importance = "permutation",
+            num.trees = 500
+        )
+        imp <- ranger::importance(fit)
+        imp[is.na(imp)] <- 0
+        feature <- class_features(class_markers, ct, markers)
         data.frame(
             output_node = ct,
-            feature = markers,
-            value = imp,
+            feature = feature,
+            value = imp[feature],
             stringsAsFactors = FALSE
         )
     })
@@ -521,45 +579,56 @@ train_rf <- function(data, clusters) {
 }
 
 #' XGBoost gain-based importance weights
+#'
+#' One booster per cell type (that cell type against all the others), so the
+#' gain of a marker is learned for the cell type it is reported for instead
+#' of being shared by every cell type.
+#'
+#' @param data The prepared training data, see
+#'  [prepare_data_for_training()]
+#' @param clusters The cell type of each cell of `data$z`
+#' @param class_markers A named list of the marker genes of each cell type
+#'  (names are the cell types, values the gene vectors). Each cell type
+#'  then reports its own markers instead of every candidate feature.
+#'  `NULL` (default) keeps the previous behaviour of reporting every
+#'  candidate feature for every cell type. See [class_features()].
 #' @keywords internal
-train_xgb <- function(data, clusters) {
+train_xgb <- function(data, clusters, class_markers = NULL) {
     if (!requireNamespace("xgboost", quietly = TRUE)) {
         stop("Package 'xgboost' is required for method='xgb'. ",
              "Install with: install.packages('xgboost')")
     }
     uctypes <- unique(data$clusters)
     markers <- colnames(data$z)
-    uclusters_int <- as.integer(factor(clusters)) - 1  # 0-based
-    n_classes <- length(uctypes)
-
-    dtrain <- xgboost::xgb.DMatrix(
-        data = as.matrix(data$z),
-        label = uclusters_int
-    )
+    z <- as.matrix(data$z)
     params <- list(
-        objective = "multi:softprob",
-        num_class = n_classes,
+        objective = "binary:logistic",
         max_depth = 6,
         eta = 0.3,
         nthread = 1,
         verbosity = 0
     )
-    fit <- xgboost::xgb.train(
-        params = params, data = dtrain, nrounds = 50
-    )
-    imp <- xgboost::xgb.importance(
-        feature_names = markers, model = fit
-    )
-    # Build complete matrix: all features × all cell types
-    imp_vec <- setNames(rep(0, length(markers)), markers)
-    imp_vec[imp$Feature] <- imp$Gain
-    imp_vec[is.na(imp_vec)] <- 0
 
     out <- lapply(uctypes, function(ct) {
+        dtrain <- xgboost::xgb.DMatrix(
+            data = z,
+            label = as.numeric(clusters == ct)
+        )
+        fit <- xgboost::xgb.train(
+            params = params, data = dtrain, nrounds = 50
+        )
+        imp <- xgboost::xgb.importance(
+            feature_names = markers, model = fit
+        )
+        # Build complete vector: all candidate features
+        imp_vec <- setNames(rep(0, length(markers)), markers)
+        imp_vec[imp$Feature] <- imp$Gain
+        imp_vec[is.na(imp_vec)] <- 0
+        feature <- class_features(class_markers, ct, markers)
         data.frame(
             output_node = ct,
-            feature = markers,
-            value = imp_vec,
+            feature = feature,
+            value = imp_vec[feature],
             stringsAsFactors = FALSE
         )
     })
@@ -1095,9 +1164,23 @@ compile_weights <- function(
                         ),
                         immediate. = TRUE
                     )
+                    return(NULL)
                 }
             } else {
                 v[is.na(v)] <- 1
+            }
+            # A type with no surviving markers must not reach data.frame():
+            # `cell_type` would be length 1 against a length-0 `gene`, which
+            # errors with "arguments imply differing number of rows: 1, 0".
+            if (length(markers) == 0) {
+                warning(
+                    paste0(
+                        "Cell type '", x, "' has no usable markers; ",
+                        "the cell type is dropped from the output"
+                    ),
+                    immediate. = TRUE
+                )
+                return(NULL)
             }
             data.frame(
                 cell_type = x,
@@ -1108,6 +1191,15 @@ compile_weights <- function(
                 stringsAsFactors = FALSE
             )
         })
+        parts <- Filter(Negate(is.null), parts)
+        if (length(parts) == 0) {
+            # every type was dropped: return a shape-compatible empty table
+            return(data.frame(
+                cell_type = character(), gene = character(),
+                direction = character(), weight = numeric(),
+                level = integer(), stringsAsFactors = FALSE
+            ))
+        }
         return(do.call(rbind, parts))
     }
 
