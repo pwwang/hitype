@@ -24,7 +24,6 @@ Suggests:
     innsight,
     keras (>= 2.11.0),
     knitr,
-    pbmc3k.SeuratData,
     presto,
     qs2,
     ranger,

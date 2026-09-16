@@ -31,7 +31,7 @@ test_that("train_weights() works", {
     if (file.exists(pbmc_rds)) {
         pbmc <- readRDS(pbmc_rds)
     } else {
-        pbmc <- pbmc3k.SeuratData::pbmc3k
+        pbmc <- SeuratData::LoadData("pbmc3k")
         pbmc <- Seurat::UpdateSeuratObject(pbmc)
         pbmc[["percent.mt"]] <- Seurat::PercentageFeatureSet(pbmc, pattern = "^MT-")
         pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
