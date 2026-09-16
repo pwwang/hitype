@@ -8,6 +8,7 @@
   persists per-type linear models (glmnet/lr) and `hitype_score_models()`
   scores cells with the model equations (linear predictors) and a
   margin-based Unknown threshold.
+- feat: enhance train_weights functions to support class-specific markers and update documentation
 
 ## Version 0.1.0
 
